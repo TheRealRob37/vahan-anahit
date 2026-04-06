@@ -11,7 +11,9 @@ export default function GuestPresenceSection() {
             ամենաթանկ նվերն է,
             որով այս օրը կդառնա առավել լուսավոր և հիշարժան։
           </p>
-          <MusicPlayer />
+          <div className="hidden md:block">
+            <MusicPlayer />
+          </div>
         </FadeIn>
       </div>
     </section>

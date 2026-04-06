@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import React from 'react'
+import MusicPlayer from './MusicPlayer'
 
 export default function HeroSection() {
   return (
@@ -14,8 +15,8 @@ export default function HeroSection() {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(30,18,10,0.85) 0%, rgba(30,18,10,0.3) 50%, rgba(30,18,10,0.1) 100%)' }} />
       </div>
 
-      {/* Save the Date — mobile: large centered stacked */}
-      <div className="md:hidden absolute inset-0 flex items-center justify-center z-10" style={{ paddingBottom: '30vh' }}>
+      {/* Save the Date + vinyl — mobile */}
+      <div className="md:hidden absolute inset-0 flex flex-col items-center justify-center z-10" style={{ paddingBottom: '30vh' }}>
         <div className="flex flex-col items-center leading-none">
           {['Save', 'the', 'Date'].map(word => (
             <span
@@ -27,10 +28,13 @@ export default function HeroSection() {
             </span>
           ))}
         </div>
+        <div className="mt-6">
+          <MusicPlayer vinyl />
+        </div>
       </div>
 
-      {/* Save the Date — desktop: centered inline */}
-      <div className="hidden md:flex absolute inset-0 items-center justify-center z-10" style={{ paddingBottom: '30vh' }}>
+      {/* Save the Date — desktop: higher up */}
+      <div className="hidden md:flex absolute inset-0 items-start justify-center z-10" style={{ paddingTop: '8vh' }}>
         <span className="font-carolina text-amber-200/50" style={{ fontSize: 'clamp(3rem, 6vw, 5.5rem)', lineHeight: 1 }}>
           Save the Date
         </span>
