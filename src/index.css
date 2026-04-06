@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Carolina';
+  src: url('/fonts/Carolina.otf') format('opentype'),
+       url('/fonts/Carolina.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-carolina {
+  font-family: 'Carolina', cursive;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #f5f0ea;
+    font-family: 'Noto Sans Armenian', sans-serif;
+    color: #3a3229;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Noto Serif Armenian', serif;
+  }
+}
+
+.font-armenian-serif {
+  font-family: 'Noto Serif Armenian', serif;
+}
+
+.font-armenian-sans {
+  font-family: 'Noto Sans Armenian', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f5f0ea; }
+::-webkit-scrollbar-thumb { background: #c9b99a; border-radius: 3px; }
+
+/* Circle on date */
+.date-circle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.date-circle::after {
+  content: '';
+  position: absolute;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1.5px solid #8b6f4e;
+  border-radius: 50%;
+}
+
