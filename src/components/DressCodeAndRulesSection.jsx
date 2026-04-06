@@ -16,7 +16,7 @@ export default function DressCodeAndRulesSection() {
         <FadeIn>
           <SectionHeader label="Հագուստ" title="Դրես-կոդ" titleColor="#4a2c1a" />
           <p className="font-armenian-sans text-sm text-stone-600 leading-relaxed max-w-sm mx-auto">
-            Հագուստի գույների ընտրությունը ցանկալի է և նախընտրելի են այս գույները՝
+            Հագուստի գույների ընտրությունը ցանկալի է, բայց ոչ պարտադիր և նախընտրելի գույներն են՝
             շոկոլադագույն, բորդո, սև, մուգ կապույտ և մուգ կանաչ
           </p>
         </FadeIn>

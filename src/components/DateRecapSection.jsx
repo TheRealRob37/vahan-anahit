@@ -7,7 +7,7 @@ export default function DateRecapSection() {
       <div className="max-w-md mx-auto text-center">
         <FadeIn>
           <OrnamentDivider />
-          <p className="font-armenian-sans text-stone-600 text-sm leading-relaxed">
+          <p className="font-armenian-sans font-bold text-sm leading-relaxed" style={{ color: 'oklch(45% 0.1 60)' }}>
             Երեկոն խոստանում է լինել լի ջերմությամբ,
             գեղեցիկ երաժշտությամբ և տոնական տրամադրությամբ։
             Քանի որ այն նախատեսված է մեծահասակների համար՝

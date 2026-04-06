@@ -7,7 +7,7 @@ import AdminPage from './pages/AdminPage'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<InvitationPage />} />
         <Route path="/admin" element={<AdminPage />} />

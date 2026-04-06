@@ -13,6 +13,7 @@ export default function CalendarSection() {
       <div className="max-w-md mx-auto">
         <FadeIn delay={0.15}>
           <div className="w-full max-w-xs mx-auto">
+            <p className="text-center font-armenian-serif text-2xl text-amber-900/80 mb-3">Ապրիլ 2026</p>
             <div className="grid grid-cols-7 mb-2">
               {days.map(d => (
                 <div key={d} className="text-center text-xs font-armenian-sans text-amber-800/70 font-medium py-1">
