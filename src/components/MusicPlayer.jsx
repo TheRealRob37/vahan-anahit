@@ -3,14 +3,33 @@ import { motion } from 'framer-motion'
 
 const SRC = `${import.meta.env.BASE_URL}Frank Sinatra (Фрэнк Синатра) - My Way.mp3`
 
+function useAutoplay(audioRef, setPlaying) {
+  useEffect(() => {
+    const audio = audioRef.current
+    audio.muted = true
+    audio.play().then(() => {
+      setPlaying(true)
+      // Unmute on first user interaction
+      const unmute = () => {
+        audio.muted = false
+        window.removeEventListener('click', unmute)
+        window.removeEventListener('touchstart', unmute)
+        window.removeEventListener('keydown', unmute)
+        window.removeEventListener('scroll', unmute)
+      }
+      window.addEventListener('click', unmute)
+      window.addEventListener('touchstart', unmute)
+      window.addEventListener('keydown', unmute)
+      window.addEventListener('scroll', unmute)
+    }).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 function VinylPlayer() {
   const [playing, setPlaying] = useState(false)
   const audioRef = useRef(null)
 
-  const toggle = () => {
-    if (playing) { audioRef.current.pause() } else { audioRef.current.play() }
-    setPlaying(!playing)
-  }
+  useAutoplay(audioRef, setPlaying)
 
   useEffect(() => {
     const audio = audioRef.current
@@ -19,9 +38,14 @@ function VinylPlayer() {
     return () => audio.removeEventListener('ended', onEnded)
   }, [])
 
+  const toggle = () => {
+    if (playing) { audioRef.current.pause() } else { audioRef.current.play() }
+    setPlaying(!playing)
+  }
+
   return (
     <div className="flex items-center justify-center">
-      <audio ref={audioRef} src={SRC} preload="metadata" />
+      <audio ref={audioRef} src={SRC} preload="auto" />
       <button onClick={toggle} className="relative focus:outline-none" aria-label="Play">
         {/* Vinyl disc */}
         <motion.div
@@ -80,6 +104,8 @@ function FullPlayer() {
   const [duration, setDuration] = useState(0)
   const audioRef = useRef(null)
 
+  useAutoplay(audioRef, setPlaying)
+
   useEffect(() => {
     const audio = audioRef.current
     const update = () => setProgress(audio.currentTime)
@@ -110,7 +136,7 @@ function FullPlayer() {
 
   return (
     <div className="max-w-xs mx-auto flex flex-col items-center gap-4">
-      <audio ref={audioRef} src={SRC} preload="metadata" />
+      <audio ref={audioRef} src={SRC} preload="auto" />
       <div className="text-center">
         <p className="font-armenian-serif text-amber-900 text-base tracking-wide">My Way</p>
         <p className="font-armenian-sans text-stone-400 text-xs mt-0.5">Frank Sinatra</p>
