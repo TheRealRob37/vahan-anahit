@@ -1,16 +1,27 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
 const SRC = `${import.meta.env.BASE_URL}Frank Sinatra (Фрэнк Синатра) - My Way.mp3`
 
-function useAutoplay(audioRef, setPlaying) {
-  useEffect(() => {
-    const audio = audioRef.current
-    audio.muted = true
-    audio.play().then(() => {
-      setPlaying(true)
-      // Unmute on first user interaction
+// Single shared audio instance — prevents double playback when both players are in the DOM
+const audio = new Audio(SRC)
+audio.preload = 'auto'
+
+let unmutedByUser = false
+let autoplayed = false
+
+function startAutoplay(onPlay) {
+  if (autoplayed) {
+    if (!audio.paused) onPlay()
+    return
+  }
+  autoplayed = true
+  audio.muted = true
+  audio.play().then(() => {
+    onPlay()
+    if (!unmutedByUser) {
       const unmute = () => {
+        unmutedByUser = true
         audio.muted = false
         window.removeEventListener('click', unmute)
         window.removeEventListener('touchstart', unmute)
@@ -21,52 +32,57 @@ function useAutoplay(audioRef, setPlaying) {
       window.addEventListener('touchstart', unmute)
       window.addEventListener('keydown', unmute)
       window.addEventListener('scroll', unmute)
-    }).catch(() => {})
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    }
+  }).catch(() => {})
 }
 
-function VinylPlayer() {
+function useAudioState() {
   const [playing, setPlaying] = useState(false)
-  const audioRef = useRef(null)
-
-  useAutoplay(audioRef, setPlaying)
 
   useEffect(() => {
-    const audio = audioRef.current
+    startAutoplay(() => setPlaying(true))
     const onEnded = () => setPlaying(false)
+    const onPause = () => setPlaying(false)
+    const onPlay = () => setPlaying(true)
     audio.addEventListener('ended', onEnded)
-    return () => audio.removeEventListener('ended', onEnded)
+    audio.addEventListener('pause', onPause)
+    audio.addEventListener('play', onPlay)
+    return () => {
+      audio.removeEventListener('ended', onEnded)
+      audio.removeEventListener('pause', onPause)
+      audio.removeEventListener('play', onPlay)
+    }
   }, [])
 
   const toggle = () => {
-    if (playing) { audioRef.current.pause() } else { audioRef.current.play() }
-    setPlaying(!playing)
+    if (audio.paused) { audio.play() } else { audio.pause() }
   }
+
+  return { playing, toggle }
+}
+
+function VinylPlayer() {
+  const { playing, toggle } = useAudioState()
 
   return (
     <div className="flex items-center justify-center">
-      <audio ref={audioRef} src={SRC} preload="auto" />
       <button onClick={toggle} className="relative focus:outline-none" aria-label="Play">
-        {/* Vinyl disc */}
         <motion.div
           animate={{ rotate: playing ? 360 : 0 }}
           transition={{ repeat: Infinity, duration: 3, ease: 'linear', repeatType: 'loop' }}
           style={{ willChange: 'transform' }}
           className="w-20 h-20 rounded-full"
         >
-          {/* Outer ring */}
           <div className="w-full h-full rounded-full" style={{
             background: 'conic-gradient(from 0deg, #1a1008, #3a2010, #1a1008, #2a1810, #1a1008)',
             boxShadow: '0 0 0 2px rgba(200,160,60,0.3), 0 4px 20px rgba(0,0,0,0.6)'
           }}>
-            {/* Grooves */}
             {[28, 36, 44, 52, 60].map(s => (
               <div key={s} className="absolute rounded-full border border-white/5" style={{
                 width: s, height: s,
                 top: (80 - s) / 2, left: (80 - s) / 2
               }} />
             ))}
-            {/* Center label */}
             <div className="absolute rounded-full flex items-center justify-center" style={{
               width: 24, height: 24, top: 28, left: 28,
               background: 'radial-gradient(circle, #c9922a, #8b5e10)',
@@ -77,7 +93,6 @@ function VinylPlayer() {
           </div>
         </motion.div>
 
-        {/* Play/pause overlay */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-7 h-7 rounded-full flex items-center justify-center"
             style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }}>
@@ -99,21 +114,18 @@ function VinylPlayer() {
 }
 
 function FullPlayer() {
-  const [playing, setPlaying] = useState(false)
+  const { playing, toggle } = useAudioState()
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
-  const audioRef = useRef(null)
-
-  useAutoplay(audioRef, setPlaying)
 
   useEffect(() => {
-    const audio = audioRef.current
     const update = () => setProgress(audio.currentTime)
     const onLoaded = () => setDuration(audio.duration)
-    const onEnded = () => { setPlaying(false); setProgress(0) }
+    const onEnded = () => setProgress(0)
     audio.addEventListener('timeupdate', update)
     audio.addEventListener('loadedmetadata', onLoaded)
     audio.addEventListener('ended', onEnded)
+    if (audio.duration) setDuration(audio.duration)
     return () => {
       audio.removeEventListener('timeupdate', update)
       audio.removeEventListener('loadedmetadata', onLoaded)
@@ -121,22 +133,16 @@ function FullPlayer() {
     }
   }, [])
 
-  const toggle = () => {
-    if (playing) { audioRef.current.pause() } else { audioRef.current.play() }
-    setPlaying(!playing)
-  }
-
   const seek = (e) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = (e.clientX - rect.left) / rect.width
-    audioRef.current.currentTime = ratio * duration
+    audio.currentTime = ratio * duration
   }
 
   const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
   return (
     <div className="max-w-xs mx-auto flex flex-col items-center gap-4">
-      <audio ref={audioRef} src={SRC} preload="auto" />
       <div className="text-center">
         <p className="font-armenian-serif text-amber-900 text-base tracking-wide">My Way</p>
         <p className="font-armenian-sans text-stone-400 text-xs mt-0.5">Frank Sinatra</p>
