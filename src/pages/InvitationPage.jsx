@@ -1,3 +1,4 @@
+// Wedding Invitation Page - Main page displaying all wedding details and RSVP form
 import HeroSection from '../components/HeroSection'
 import InvitationTextSection from '../components/InvitationTextSection'
 import CalendarSection from '../components/CalendarSection'

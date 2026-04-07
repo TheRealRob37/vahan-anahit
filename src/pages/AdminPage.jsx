@@ -1,3 +1,4 @@
+// Admin Dashboard - Password protected page for managing RSVP submissions and wedding data
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
