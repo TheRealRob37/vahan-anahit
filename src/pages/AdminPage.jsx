@@ -251,9 +251,16 @@ function AdminDashboard() {
     <div className="min-h-screen" style={{ backgroundColor: '#f5f0ea' }}>
       {/* Header */}
       <div className="bg-white border-b border-stone-100 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-stone-800">Հրավերք</h1>
-          <p className="text-xs text-stone-400">Վահան & Անահիտ · 25.04.2026</p>
+        <div className="flex items-center gap-4">
+          <a href="/" className="text-stone-400 hover:text-amber-800 transition" title="Վերադառնալ">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M11 4L6 9l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </a>
+          <div>
+            <h1 className="text-lg font-semibold text-stone-800">Հրավերք</h1>
+            <p className="text-xs text-stone-400">Վահան & Անահիտ · 25.04.2026</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button
