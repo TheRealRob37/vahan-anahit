@@ -54,6 +54,7 @@ function StatCard({ label, value, color }) {
 }
 
 function EditModal({ row, onSave, onClose }) {
+  const isNew = !row.id
   const [form, setForm] = useState({
     name1: row.name1 || '',
     surname1: row.surname1 || '',
@@ -81,9 +82,15 @@ function EditModal({ row, onSave, onClose }) {
       host: form.host,
       guests: Number(form.guests),
     }
-    const { error } = await supabase.from('rsvp_responses').update(payload).eq('id', row.id)
-    if (error) { setErr(error.message); setSaving(false); return }
-    onSave({ ...row, ...payload })
+    if (isNew) {
+      const { data, error } = await supabase.from('rsvp_responses').insert(payload).select().single()
+      if (error) { setErr(error.message); setSaving(false); return }
+      onSave(data)
+    } else {
+      const { error } = await supabase.from('rsvp_responses').update(payload).eq('id', row.id)
+      if (error) { setErr(error.message); setSaving(false); return }
+      onSave({ ...row, ...payload })
+    }
     onClose()
   }
 
@@ -91,7 +98,7 @@ function EditModal({ row, onSave, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-7">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-base font-semibold text-stone-800">Խմբագրել հյուրին</h2>
+          <h2 className="text-base font-semibold text-stone-800">{isNew ? 'Ավելացնել հյուր' : 'Խմբագրել հյուրին'}</h2>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-600 transition text-xl leading-none">&times;</button>
         </div>
         <form onSubmit={submit} className="space-y-4">
@@ -152,7 +159,7 @@ function EditModal({ row, onSave, onClose }) {
             </button>
             <button type="submit" disabled={saving}
               className="flex-1 py-2.5 bg-amber-800 hover:bg-amber-900 text-white rounded-full text-sm font-medium transition disabled:opacity-60">
-              {saving ? 'Պահպանվում...' : 'Պահպանել'}
+              {saving ? 'Պահպանվում...' : isNew ? 'Ավելացնել' : 'Պահպանել'}
             </button>
           </div>
         </form>
@@ -196,12 +203,15 @@ function AdminDashboard() {
   }
 
   const saveEdit = (updated) => {
-    setRows(prev => prev.map(r => r.id === updated.id ? updated : r))
+    setRows(prev => {
+      const exists = prev.some(r => r.id === updated.id)
+      return exists ? prev.map(r => r.id === updated.id ? updated : r) : [updated, ...prev]
+    })
   }
 
   const attending = rows.filter(r => r.attending === 'yes')
   const notAttending = rows.filter(r => r.attending === 'no')
-  const totalGuests = attending.reduce((sum, r) => sum + (r.guests || 0), 0)
+
 
 
   const filtered = rows.filter(r => {
@@ -245,20 +255,27 @@ function AdminDashboard() {
           <h1 className="text-lg font-semibold text-stone-800">Հրավերք</h1>
           <p className="text-xs text-stone-400">Վահան & Անահիտ · 25.04.2026</p>
         </div>
-        <button
-          onClick={fetchRSVPs}
-          className="text-xs text-amber-800 border border-amber-800/30 rounded-full px-4 py-1.5 hover:bg-amber-800 hover:text-white transition"
-        >
-          Թարմացնել
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setEditRow({})}
+            className="text-xs bg-amber-800 text-white rounded-full px-4 py-1.5 hover:bg-amber-900 transition"
+          >
+            + Ավելացնել
+          </button>
+          <button
+            onClick={fetchRSVPs}
+            className="text-xs text-amber-800 border border-amber-800/30 rounded-full px-4 py-1.5 hover:bg-amber-800 hover:text-white transition"
+          >
+            Թարմացնել
+          </button>
+        </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <StatCard label="Կգան" value={attending.length} color="text-green-600" />
           <StatCard label="Չեն Գա" value={notAttending.length} color="text-red-500" />
-          <StatCard label="Հյուրեր" value={totalGuests} color="text-amber-700" />
         </div>
 
         {/* Filters */}
