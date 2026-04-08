@@ -10,6 +10,8 @@ function LoginScreen({ onLogin }) {
 
   const submit = (e) => {
     e.preventDefault()
+    console.log('Password entered:', pw)
+    console.log('Expected password:', ADMIN_PASSWORD)
     if (pw === ADMIN_PASSWORD) {
       sessionStorage.setItem('admin_auth', '1')
       onLogin()

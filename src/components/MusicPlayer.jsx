@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
-const SRC = `${import.meta.env.BASE_URL}Frank Sinatra (Фрэнк Синатра) - My Way.mp3`
+const SRC = `${import.meta.env.BASE_URL}Jiandro - Where is my husband! Raye.mp3`
 
 // Single shared audio instance — prevents double playback when both players are in the DOM
 const audio = new Audio(SRC)

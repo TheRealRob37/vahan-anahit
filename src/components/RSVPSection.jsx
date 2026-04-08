@@ -41,6 +41,13 @@ export default function RSVPSection() {
     }
   }
 
+  const isFormValid = () => {
+    if (!attending) return false
+    if (!formData.name1.trim() || !formData.surname1.trim()) return false
+    if (guests === 2 && (!formData.name2.trim() || !formData.surname2.trim())) return false
+    return true
+  }
+
   return (
     <section style={{ backgroundColor: '#faf7f4' }} className="px-6 py-14">
       <div className="max-w-md mx-auto">
@@ -151,10 +158,10 @@ export default function RSVPSection() {
 
               <motion.button
                 type="submit"
-                disabled={!attending || loading}
-                whileHover={attending && !loading ? { scale: 1.02 } : {}}
-                whileTap={attending && !loading ? { scale: 0.98 } : {}}
-                className={`w-full py-4 text-white font-armenian-serif text-base tracking-wide rounded-full shadow-lg transition-colors duration-300 ${!attending || loading ? 'bg-amber-800/40 cursor-not-allowed' : 'bg-amber-800 hover:bg-amber-900'}`}
+                disabled={!isFormValid() || loading}
+                whileHover={isFormValid() && !loading ? { scale: 1.02 } : {}}
+                whileTap={isFormValid() && !loading ? { scale: 0.98 } : {}}
+                className={`w-full py-4 text-white font-armenian-serif text-base tracking-wide rounded-full shadow-lg transition-colors duration-300 ${!isFormValid() || loading ? 'bg-amber-800/40 cursor-not-allowed' : 'bg-amber-800 hover:bg-amber-900'}`}
               >
                 {loading ? '...' : 'Հաստատել'}
               </motion.button>
