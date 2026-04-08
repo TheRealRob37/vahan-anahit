@@ -10,7 +10,11 @@ audio.preload = 'auto'
 // Autoplay only on the invitation page (not admin)
 if (!window.location.pathname.includes('/admin')) {
   audio.play().catch(() => {
-    const resume = () => audio.play().catch(() => {})
+    const resume = () => {
+      audio.play().catch(() => {})
+      document.removeEventListener('click', resume)
+      document.removeEventListener('touchstart', resume)
+    }
     document.addEventListener('click', resume, { once: true })
     document.addEventListener('touchstart', resume, { once: true, passive: true })
   })
@@ -59,7 +63,7 @@ function VinylPlayer() {
 
   return (
     <div className="flex items-center justify-center">
-      <button onClick={toggle} className="relative focus:outline-none" aria-label="Play">
+      <button onClick={toggle} className="relative focus:outline-none" aria-label={playing ? 'Pause' : 'Play'}>
         <motion.div
           animate={controls}
           style={{ willChange: 'transform' }}

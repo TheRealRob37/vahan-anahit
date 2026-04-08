@@ -8,6 +8,8 @@ export default function ThankYouSection() {
       <motion.img
         src={`${import.meta.env.BASE_URL}thankYou.jpg`}
         alt="Վահան և Անահիտ"
+        loading="lazy"
+        decoding="async"
         className="md:hidden w-full h-full object-cover object-top"
         initial={{ scale: 1.08 }}
         whileInView={{ scale: 1 }}

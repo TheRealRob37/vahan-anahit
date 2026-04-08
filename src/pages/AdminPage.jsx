@@ -1,6 +1,9 @@
-// Admin Dashboard - Password protected page for managing RSVP submissions and wedding data
+// Admin Dashboard Component
+// Password-protected page for managing wedding RSVP submissions and guest data
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+
+import { COUPLE, WEDDING_DATE_SHORT } from '../config/wedding'
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin'
 
@@ -23,7 +26,7 @@ function LoginScreen({ onLogin }) {
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f5f0ea' }}>
       <form onSubmit={submit} className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-sm space-y-5">
         <h1 className="text-2xl font-semibold text-stone-800 text-center">Ադմին</h1>
-        <p className="text-sm text-stone-500 text-center">Վահան & Անահիտ · 25.04.2026</p>
+        <p className="text-sm text-stone-500 text-center">{COUPLE} · {WEDDING_DATE_SHORT}</p>
         <input
           type="password"
           value={pw}
@@ -159,7 +162,7 @@ function EditModal({ row, onSave, onClose }) {
             </button>
             <button type="submit" disabled={saving}
               className="flex-1 py-2.5 bg-amber-800 hover:bg-amber-900 text-white rounded-full text-sm font-medium transition disabled:opacity-60">
-              {saving ? 'Պահպանվում...' : isNew ? 'Ավելացնել' : 'Պահպանել'}
+              {saving ? 'Պահպանվում է...' : isNew ? 'Ավելացնել' : 'Պահպանել'}
             </button>
           </div>
         </form>
@@ -176,6 +179,7 @@ function AdminDashboard() {
   const [search, setSearch] = useState('')
   const [editRow, setEditRow] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
 
   const fetchRSVPs = useCallback(async () => {
     setLoading(true)
@@ -194,10 +198,11 @@ function AdminDashboard() {
   const deleteRow = async (id) => {
     const { error } = await supabase.from('rsvp_responses').delete().eq('id', id)
     if (error) {
-      alert('Ջնջումը ձախողվեց: ' + error.message)
+      setDeleteError('Ջնջումը ձախողվեց: ' + error.message)
       setConfirmDeleteId(null)
       return
     }
+    setDeleteError(null)
     setRows(prev => prev.filter(r => r.id !== id))
     setConfirmDeleteId(null)
   }
@@ -235,7 +240,7 @@ function AdminDashboard() {
 
   function guestNames(r) {
     const names = [`${r.name1} ${r.surname1}`]
-    if (r.name2) names.push(`${r.name2} ${r.surname2}`)
+    if (r.name2 && r.surname2) names.push(`${r.name2} ${r.surname2}`)
     return names
   }
 
@@ -259,7 +264,7 @@ function AdminDashboard() {
           </a>
           <div>
             <h1 className="text-lg font-semibold text-stone-800">Հրավերք</h1>
-            <p className="text-xs text-stone-400">Վահան & Անահիտ · 25.04.2026</p>
+            <p className="text-xs text-stone-400">{COUPLE} · {WEDDING_DATE_SHORT}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -320,6 +325,12 @@ function AdminDashboard() {
           </div>
           <span className="text-xs text-stone-400 ml-auto">{filtered.length} արդյունք</span>
         </div>
+
+        {deleteError && (
+          <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
+            {deleteError}
+          </div>
+        )}
 
         {/* Table */}
         <div className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">

@@ -1,6 +1,7 @@
+import { Fragment } from 'react'
 import { motion } from 'framer-motion'
-import React from 'react'
 import MusicPlayer from './MusicPlayer'
+import { GROOM, BRIDE, WEDDING_DATE_PARTS } from '../config/wedding'
 
 export default function HeroSection() {
   return (
@@ -55,7 +56,7 @@ export default function HeroSection() {
             className="font-armenian-serif text-white leading-none mb-4"
             style={{ fontSize: 'clamp(3rem, 12vw, 7rem)', fontWeight: 300, letterSpacing: '-0.02em' }}
           >
-            Վահան
+            {GROOM}
           </h1>
           <div className="flex items-center gap-4 justify-center mb-4">
             <div className="h-px flex-1 max-w-[80px] bg-amber-200/30" />
@@ -66,7 +67,7 @@ export default function HeroSection() {
             className="font-armenian-serif text-white leading-none mb-8"
             style={{ fontSize: 'clamp(3rem, 12vw, 7rem)', fontWeight: 300, letterSpacing: '-0.02em' }}
           >
-            Անահիտ
+            {BRIDE}
           </h2>
         </motion.div>
 
@@ -76,15 +77,15 @@ export default function HeroSection() {
           transition={{ duration: 1, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="flex justify-center gap-px mb-8"
         >
-          {['25', '04', '26'].map((value, i) => (
-            <React.Fragment key={value}>
+          {WEDDING_DATE_PARTS.map((value, i) => (
+            <Fragment key={value}>
               {i > 0 && <div className="w-px bg-amber-200/20 mx-3" />}
               <div className="text-center px-3">
                 <div className="font-armenian-serif text-white/90" style={{ fontSize: 'clamp(1.8rem, 7vw, 3.5rem)', fontWeight: 300 }}>
                   {value}
                 </div>
               </div>
-            </React.Fragment>
+            </Fragment>
           ))}
         </motion.div>
 

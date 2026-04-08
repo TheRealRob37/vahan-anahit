@@ -8,7 +8,7 @@ export default function InvitationTextSection() {
           <p className="font-armenian-serif text-stone-800 text-lg leading-relaxed">
             Սիրով հրավիրում ենք Ձեզ<br />
             կիսելու մեր կյանքի ամենակարևոր և երջանիկ օրը,<br />
-            երբ մենք կասենք մեր ամենասսպասված "այո"-ն։
+            երբ մենք կասենք մեր ամենասպասված "այո"-ն։
           </p>
         </FadeIn>
       </div>

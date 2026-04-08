@@ -1,17 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Create a .env.local file with these two values:
-// VITE_SUPABASE_URL=https://xxxx.supabase.co
-// VITE_SUPABASE_ANON_KEY=eyJh...
+// Supabase configuration
+// Create a .env.local file in the project root with:
+// VITE_SUPABASE_URL=https://your-project.supabase.co
+// VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+// Initialize Supabase client for database operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 /*
-  Run this SQL in your Supabase SQL editor:
+  Database Setup Instructions:
 
+  1. Create table in Supabase SQL Editor:
   CREATE TABLE rsvp_responses (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT now(),
@@ -24,8 +27,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
     surname2 TEXT
   );
 
-  Then in Supabase dashboard → Authentication → Policies:
-  Enable Row Level Security and add:
-  - INSERT policy: allow all (for guest submissions)
-  - SELECT policy: allow all (or restrict by role for admin)
+  2. Enable Row Level Security in Authentication → Policies:
+  - INSERT: Allow all (for guest RSVP submissions)
+  - SELECT: Allow all (for admin dashboard access)
 */

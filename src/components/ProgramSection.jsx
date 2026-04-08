@@ -4,18 +4,18 @@ import MapLink from './MapLink'
 export default function ProgramSection() {
   const events = [
     {
-      time: '15:00',
+      time: '14:45',
       title: 'Պսակադրություն',
       venue: 'Սուրբ Հռիփսիմե եկեղեցի, Էջմիածին',
       address: 'Վաղարշապատ, Հայաստան',
-      mapsUrl: 'https://maps.google.com/?q=Saint+Hripsime+Church+Vagharshapat',
+      mapsUrl: 'https://yandex.com/maps/org/35208500744/?ll=44.309617%2C40.167003&z=16',
     },
     {
       time: '17:00',
       title: 'Հարսանեկան ընթրիք',
       venue: '«Արիա» ռեստորան',
       address: 'Երևան, Հայաստան',
-      mapsUrl: 'https://maps.google.com/?q=Restaurant+Aria+Yerevan',
+      mapsUrl: 'https://yandex.com/maps/org/1709327076/?ll=44.576119%2C40.190755&z=16.26',
     },
   ]
 
