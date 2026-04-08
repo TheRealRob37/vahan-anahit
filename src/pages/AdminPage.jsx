@@ -214,8 +214,10 @@ function AdminDashboard() {
     })
   }
 
-  const attending = rows.filter(r => r.attending === 'yes')
+  const attending    = rows.filter(r => r.attending === 'yes')
   const notAttending = rows.filter(r => r.attending === 'no')
+  const attendingCount    = attending.reduce((sum, r) => sum + (r.guests ?? 1), 0)
+  const notAttendingCount = notAttending.reduce((sum, r) => sum + (r.guests ?? 1), 0)
 
 
 
@@ -286,8 +288,8 @@ function AdminDashboard() {
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4">
-          <StatCard label="Կգան" value={attending.length} color="text-green-600" />
-          <StatCard label="Չեն Գա" value={notAttending.length} color="text-red-500" />
+          <StatCard label="Կգան" value={attendingCount} color="text-green-600" />
+          <StatCard label="Չեն Գա" value={notAttendingCount} color="text-red-500" />
         </div>
 
         {/* Filters */}
