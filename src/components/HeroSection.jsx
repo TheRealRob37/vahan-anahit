@@ -1,6 +1,7 @@
 import { Fragment } from 'react'
 import { motion } from 'framer-motion'
 import MusicPlayer from './MusicPlayer'
+import Stars from './Stars'
 import { GROOM, BRIDE, WEDDING_DATE_PARTS } from '../config/wedding'
 
 export default function HeroSection() {
@@ -16,6 +17,7 @@ export default function HeroSection() {
           style={{ filter: 'brightness(0.45) saturate(0.8)' }}
         />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(30,18,10,0.85) 0%, rgba(30,18,10,0.3) 50%, rgba(30,18,10,0.1) 100%)' }} />
+        <Stars />
       </div>
 
       {/* Save the Date + vinyl — mobile: flex-1 so it fills space above names naturally */}

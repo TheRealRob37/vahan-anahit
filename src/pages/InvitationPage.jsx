@@ -8,10 +8,12 @@ import DateRecapSection from '../components/DateRecapSection'
 import RSVPSection from '../components/RSVPSection'
 import ThankYouSection from '../components/ThankYouSection'
 import FooterSection from '../components/FooterSection'
+import Confetti from '../components/Confetti'
 
 export default function InvitationPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f5f0ea' }}>
+      <Confetti />
       <HeroSection />
       <InvitationTextSection />
       <CalendarSection />
