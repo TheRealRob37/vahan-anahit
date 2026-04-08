@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useAnimation } from 'framer-motion'
 
 const SRC = `${import.meta.env.BASE_URL}where-is-my-husband.mp3`
 
@@ -47,13 +47,21 @@ function useAudioState() {
 
 function VinylPlayer() {
   const { playing, toggle } = useAudioState()
+  const controls = useAnimation()
+
+  useEffect(() => {
+    if (playing) {
+      controls.start({ rotate: 360, transition: { duration: 3, ease: 'linear', repeat: Infinity, repeatType: 'loop' } })
+    } else {
+      controls.stop()
+    }
+  }, [playing, controls])
 
   return (
     <div className="flex items-center justify-center">
       <button onClick={toggle} className="relative focus:outline-none" aria-label="Play">
         <motion.div
-          animate={{ rotate: playing ? 360 : 0 }}
-          transition={{ repeat: Infinity, duration: 3, ease: 'linear', repeatType: 'loop' }}
+          animate={controls}
           style={{ willChange: 'transform' }}
           className="w-20 h-20 rounded-full"
         >

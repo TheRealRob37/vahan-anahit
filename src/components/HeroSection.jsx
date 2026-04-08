@@ -9,6 +9,8 @@ export default function HeroSection() {
         <img
           src={`${import.meta.env.BASE_URL}background.jpg`}
           alt=""
+          fetchpriority="high"
+          decoding="async"
           className="w-full h-full object-cover object-center"
           style={{ filter: 'brightness(0.45) saturate(0.8)' }}
         />
@@ -85,6 +87,7 @@ export default function HeroSection() {
             </React.Fragment>
           ))}
         </motion.div>
+
       </div>
     </section>
   )

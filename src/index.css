@@ -21,7 +21,7 @@
     margin: 0;
     padding: 0;
     background-color: #f5f0ea;
-    font-family: 'Noto Sans Armenian', sans-serif;
+    font-family: 'Noto Serif Armenian', serif;
     color: #3a3229;
   }
   h1, h2, h3, h4 {
@@ -34,7 +34,7 @@
 }
 
 .font-armenian-sans {
-  font-family: 'Noto Sans Armenian', sans-serif;
+  font-family: 'Noto Serif Armenian', serif;
 }
 
 /* Scrollbar */
