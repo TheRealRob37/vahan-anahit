@@ -54,7 +54,7 @@ export default function RSVPSection() {
         <FadeIn>
           <SectionHeader label="Հաստատում" title="Հաստատել մասնակցությունը" />
           <p className="font-armenian-sans text-sm text-stone-500 text-center mb-8 leading-relaxed">
-            Խնդրում ենք մինչև  Ապրիլի 15-ը լրացնել՝ նշելով ձեր մասնակցությունը և հյուրերի քանակը։<br />
+            Խնդրում ենք մինչև Ապրիլի 20-ը լրացնել՝ նշելով ձեր մասնակցությունը և հյուրերի քանակը։<br />
           </p>
         </FadeIn>
         <FadeIn delay={0.15}>
