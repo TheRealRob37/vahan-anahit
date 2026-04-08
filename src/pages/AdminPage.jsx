@@ -106,16 +106,20 @@ function EditModal({ row, onSave, onClose }) {
               <input required value={form.surname1} onChange={e => set('surname1', e.target.value)}
                 className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
             </div>
-            <div>
-              <label className="text-xs text-stone-500 mb-1 block">Անուն 2</label>
-              <input value={form.name2} onChange={e => set('name2', e.target.value)}
-                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
-            </div>
-            <div>
-              <label className="text-xs text-stone-500 mb-1 block">Ազգանուն 2</label>
-              <input value={form.surname2} onChange={e => set('surname2', e.target.value)}
-                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
-            </div>
+            {Number(form.guests) > 1 && (
+              <>
+                <div>
+                  <label className="text-xs text-stone-500 mb-1 block">Անուն 2</label>
+                  <input value={form.name2} onChange={e => set('name2', e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
+                </div>
+                <div>
+                  <label className="text-xs text-stone-500 mb-1 block">Ազգանուն 2</label>
+                  <input value={form.surname2} onChange={e => set('surname2', e.target.value)}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
+                </div>
+              </>
+            )}
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -181,7 +185,12 @@ function AdminDashboard() {
   }, [fetchRSVPs])
 
   const deleteRow = async (id) => {
-    await supabase.from('rsvp_responses').delete().eq('id', id)
+    const { error } = await supabase.from('rsvp_responses').delete().eq('id', id)
+    if (error) {
+      alert('Ջնջումը ձախողվեց: ' + error.message)
+      setConfirmDeleteId(null)
+      return
+    }
     setRows(prev => prev.filter(r => r.id !== id))
     setConfirmDeleteId(null)
   }
