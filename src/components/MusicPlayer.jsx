@@ -7,6 +7,15 @@ const SRC = `${import.meta.env.BASE_URL}where-is-my-husband.mp3`
 const audio = new Audio(SRC)
 audio.preload = 'auto'
 
+// Autoplay only on the invitation page (not admin)
+if (!window.location.pathname.includes('/admin')) {
+  audio.play().catch(() => {
+    const resume = () => audio.play().catch(() => {})
+    document.addEventListener('click', resume, { once: true })
+    document.addEventListener('touchstart', resume, { once: true, passive: true })
+  })
+}
+
 function useAudioState() {
   const [playing, setPlaying] = useState(!audio.paused)
 

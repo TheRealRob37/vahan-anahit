@@ -33,11 +33,14 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* Save the Date — desktop: higher up */}
-      <div className="hidden md:flex absolute inset-0 items-start justify-center z-10" style={{ paddingTop: '8vh' }}>
+      {/* Save the Date + vinyl — desktop */}
+      <div className="hidden md:flex absolute inset-0 flex-col items-center justify-start z-10" style={{ paddingTop: '8vh' }}>
         <span className="font-carolina text-amber-200/50" style={{ fontSize: 'clamp(3rem, 6vw, 5.5rem)', lineHeight: 1 }}>
           Save the Date
         </span>
+        <div className="mt-5">
+          <MusicPlayer vinyl />
+        </div>
       </div>
 
       <div className="relative z-10 text-center px-6 pb-12 mt-auto">

@@ -53,12 +53,118 @@ function StatCard({ label, value, color }) {
   )
 }
 
+function EditModal({ row, onSave, onClose }) {
+  const [form, setForm] = useState({
+    name1: row.name1 || '',
+    surname1: row.surname1 || '',
+    name2: row.name2 || '',
+    surname2: row.surname2 || '',
+    attending: row.attending || 'yes',
+    host: row.host || 'vahan',
+    guests: row.guests ?? 1,
+  })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState(null)
+
+  const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setErr(null)
+    const payload = {
+      name1: form.name1.trim(),
+      surname1: form.surname1.trim(),
+      name2: form.name2.trim() || null,
+      surname2: form.surname2.trim() || null,
+      attending: form.attending,
+      host: form.host,
+      guests: Number(form.guests),
+    }
+    const { error } = await supabase.from('rsvp_responses').update(payload).eq('id', row.id)
+    if (error) { setErr(error.message); setSaving(false); return }
+    onSave({ ...row, ...payload })
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-7">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-base font-semibold text-stone-800">Խմբագրել հյուրին</h2>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600 transition text-xl leading-none">&times;</button>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">Անուն 1 *</label>
+              <input required value={form.name1} onChange={e => set('name1', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
+            </div>
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">Ազգանուն 1 *</label>
+              <input required value={form.surname1} onChange={e => set('surname1', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
+            </div>
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">Անուն 2</label>
+              <input value={form.name2} onChange={e => set('name2', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
+            </div>
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">Ազգանուն 2</label>
+              <input value={form.surname2} onChange={e => set('surname2', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">Կգա՞</label>
+              <select value={form.attending} onChange={e => set('attending', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition bg-white">
+                <option value="yes">Այո</option>
+                <option value="no">Ոչ</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">Կողմ</label>
+              <select value={form.host} onChange={e => set('host', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition bg-white">
+                <option value="vahan">Փեսայի</option>
+                <option value="anahit">Հարսի</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">Հյուրեր</label>
+              <input type="number" min="1" max="10" value={form.guests} onChange={e => set('guests', e.target.value)}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition" />
+            </div>
+          </div>
+          {err && <p className="text-red-500 text-xs">{err}</p>}
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 border border-stone-200 rounded-full text-sm text-stone-600 hover:border-stone-400 transition">
+              Չեղարկել
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 py-2.5 bg-amber-800 hover:bg-amber-900 text-white rounded-full text-sm font-medium transition disabled:opacity-60">
+              {saving ? 'Պահպանվում...' : 'Պահպանել'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function AdminDashboard() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [sideFilter, setSideFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [editRow, setEditRow] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   const fetchRSVPs = useCallback(async () => {
     setLoading(true)
@@ -73,6 +179,16 @@ function AdminDashboard() {
   useEffect(() => {
     fetchRSVPs()
   }, [fetchRSVPs])
+
+  const deleteRow = async (id) => {
+    await supabase.from('rsvp_responses').delete().eq('id', id)
+    setRows(prev => prev.filter(r => r.id !== id))
+    setConfirmDeleteId(null)
+  }
+
+  const saveEdit = (updated) => {
+    setRows(prev => prev.map(r => r.id === updated.id ? updated : r))
+  }
 
   const attending = rows.filter(r => r.attending === 'yes')
   const notAttending = rows.filter(r => r.attending === 'no')
@@ -197,18 +313,19 @@ function AdminDashboard() {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Կողմ</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Քանակ</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wider">Ուղարկվել է</th>
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-stone-400 text-sm">
+                    <td colSpan={7} className="text-center py-12 text-stone-400 text-sm">
                       Պատասխաններ չկան
                     </td>
                   </tr>
                 ) : (
                   filtered.map((r, i) => (
-                    <tr key={r.id} className="border-b border-stone-50 hover:bg-amber-50/40 transition">
+                    <tr key={r.id} className={`border-b border-stone-50 transition ${confirmDeleteId === r.id ? 'bg-red-50' : 'hover:bg-amber-50/40'}`}>
                       <td className="px-5 py-4 text-stone-400 text-xs">{i + 1}</td>
                       <td className="px-5 py-4">
                         {guestNames(r).map((name, ni) => (
@@ -235,6 +352,38 @@ function AdminDashboard() {
                       </td>
                       <td className="px-5 py-4 text-stone-600">{r.guests}</td>
                       <td className="px-5 py-4 text-stone-400 text-xs whitespace-nowrap">{formatDate(r.created_at)}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {confirmDeleteId === r.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-red-600 font-medium">Ջնջե՞լ</span>
+                            <button onClick={() => deleteRow(r.id)}
+                              className="text-xs px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white rounded-full transition">
+                              Այո
+                            </button>
+                            <button onClick={() => setConfirmDeleteId(null)}
+                              className="text-xs px-2.5 py-1 border border-stone-300 text-stone-600 rounded-full hover:border-stone-500 transition">
+                              Ոչ
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setEditRow(r)}
+                              className="p-1.5 text-stone-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition"
+                              title="Խմբագրել">
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                            <button onClick={() => setConfirmDeleteId(r.id)}
+                              className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                              title="Ջնջել">
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M2 4h10M5 4V2.5h4V4M5.5 6.5v4M8.5 6.5v4M3 4l.7 7.5h6.6L11 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -254,19 +403,25 @@ function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {editRow && (
+        <EditModal row={editRow} onSave={saveEdit} onClose={() => setEditRow(null)} />
+      )}
     </div>
   )
 }
 
 function exportCSV(rows) {
-  const headers = ['Անուն 1', 'Ազգանուն 1', 'Անուն 2', 'Ազգանուն 2', 'Կգա՞', 'Կողմ', 'Հյուրեր', 'Ուղարկվել է']
-  const lines = rows.map(r => [
-    r.name1, r.surname1, r.name2 || '', r.surname2 || '',
-    r.attending, r.host, r.guests,
-    new Date(r.created_at).toLocaleString()
-  ].map(v => `"${v}"`).join(','))
-  const csv = [headers.join(','), ...lines].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+  const headers = ['Հյուր 1', 'Հյուր 2', 'Կողմ', 'Հյուրեր']
+  const lines = rows.filter(r => r.attending === 'yes').map(r => [
+    `${r.name1} ${r.surname1}`,
+    r.name2 ? `${r.name2} ${r.surname2}` : '',
+    r.host === 'anahit' ? 'Հարսի' : 'Փեսայի',
+    r.guests,
+  ].map(esc).join(','))
+  const csv = [headers.map(esc).join(','), ...lines].join('\r\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
