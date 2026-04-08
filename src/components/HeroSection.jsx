@@ -4,7 +4,7 @@ import MusicPlayer from './MusicPlayer'
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen flex flex-col justify-end overflow-hidden">
+    <section className="relative min-h-screen flex flex-col overflow-hidden">
       <div className="absolute inset-0 overflow-hidden">
         <img
           src={`${import.meta.env.BASE_URL}background.jpg`}
@@ -15,8 +15,8 @@ export default function HeroSection() {
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(30,18,10,0.85) 0%, rgba(30,18,10,0.3) 50%, rgba(30,18,10,0.1) 100%)' }} />
       </div>
 
-      {/* Save the Date + vinyl — mobile */}
-      <div className="md:hidden absolute inset-0 flex flex-col items-center justify-center z-10" style={{ paddingBottom: '30vh' }}>
+      {/* Save the Date + vinyl — mobile: flex-1 so it fills space above names naturally */}
+      <div className="md:hidden relative z-10 flex flex-col items-center justify-center flex-1 pb-4">
         <div className="flex flex-col items-center leading-none">
           {['Save', 'the', 'Date'].map(word => (
             <span
@@ -40,7 +40,7 @@ export default function HeroSection() {
         </span>
       </div>
 
-      <div className="relative z-10 text-center px-6 pb-12">
+      <div className="relative z-10 text-center px-6 pb-12 mt-auto">
         <motion.div
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
