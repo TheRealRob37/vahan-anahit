@@ -11,7 +11,7 @@ export default function ProgramSection() {
       mapsUrl: 'https://maps.google.com/?q=Saint+Hripsime+Church+Vagharshapat',
     },
     {
-      time: '18:00',
+      time: '17:00',
       title: 'Հարսանեկան ընթրիք',
       venue: '«Արիա» ռեստորան',
       address: 'Երևան, Հայաստան',
