@@ -193,8 +193,7 @@ function AdminDashboard() {
   const attending = rows.filter(r => r.attending === 'yes')
   const notAttending = rows.filter(r => r.attending === 'no')
   const totalGuests = attending.reduce((sum, r) => sum + (r.guests || 0), 0)
-  const brideGuests = attending.filter(r => r.host === 'anahit').reduce((sum, r) => sum + (r.guests || 0), 0)
-  const groomGuests = attending.filter(r => r.host === 'vahan').reduce((sum, r) => sum + (r.guests || 0), 0)
+
 
   const filtered = rows.filter(r => {
     if (filter !== 'all' && r.attending !== filter) return false
@@ -247,22 +246,10 @@ function AdminDashboard() {
 
       <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <StatCard label="Ընդամենը" value={rows.length} color="text-stone-800" />
+        <div className="grid grid-cols-3 gap-4">
           <StatCard label="Կգան" value={attending.length} color="text-green-600" />
           <StatCard label="Չեն Գա" value={notAttending.length} color="text-red-500" />
           <StatCard label="Հյուրեր" value={totalGuests} color="text-amber-700" />
-          <div className="bg-white rounded-xl p-5 shadow-sm border border-stone-100 col-span-2 md:col-span-1">
-            <div className="text-xs text-stone-500 uppercase tracking-wider mb-2">Ըստ Կողմի</div>
-            <div className="flex justify-between text-sm">
-              <span className="text-stone-600">Հարսի</span>
-              <span className="font-semibold text-amber-700">{brideGuests}</span>
-            </div>
-            <div className="flex justify-between text-sm mt-1">
-              <span className="text-stone-600">Փեսայի</span>
-              <span className="font-semibold text-amber-700">{groomGuests}</span>
-            </div>
-          </div>
         </div>
 
         {/* Filters */}
