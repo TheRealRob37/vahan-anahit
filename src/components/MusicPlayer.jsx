@@ -1,46 +1,16 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
-const SRC = `${import.meta.env.BASE_URL}Jiandro - Where is my husband! Raye.mp3`
+const SRC = `${import.meta.env.BASE_URL}where-is-my-husband.mp3`
 
 // Single shared audio instance — prevents double playback when both players are in the DOM
 const audio = new Audio(SRC)
 audio.preload = 'auto'
 
-let unmutedByUser = false
-let autoplayed = false
-
-function startAutoplay(onPlay) {
-  if (autoplayed) {
-    if (!audio.paused) onPlay()
-    return
-  }
-  autoplayed = true
-  audio.muted = true
-  audio.play().then(() => {
-    onPlay()
-    if (!unmutedByUser) {
-      const unmute = () => {
-        unmutedByUser = true
-        audio.muted = false
-        window.removeEventListener('click', unmute)
-        window.removeEventListener('touchstart', unmute)
-        window.removeEventListener('keydown', unmute)
-        window.removeEventListener('scroll', unmute)
-      }
-      window.addEventListener('click', unmute)
-      window.addEventListener('touchstart', unmute)
-      window.addEventListener('keydown', unmute)
-      window.addEventListener('scroll', unmute)
-    }
-  }).catch(() => {})
-}
-
 function useAudioState() {
-  const [playing, setPlaying] = useState(false)
+  const [playing, setPlaying] = useState(!audio.paused)
 
   useEffect(() => {
-    startAutoplay(() => setPlaying(true))
     const onEnded = () => setPlaying(false)
     const onPause = () => setPlaying(false)
     const onPlay = () => setPlaying(true)
@@ -55,7 +25,12 @@ function useAudioState() {
   }, [])
 
   const toggle = () => {
-    if (audio.paused) { audio.play() } else { audio.pause() }
+    if (audio.paused) {
+      audio.muted = false
+      audio.play().catch(() => {})
+    } else {
+      audio.pause()
+    }
   }
 
   return { playing, toggle }
@@ -144,8 +119,8 @@ function FullPlayer() {
   return (
     <div className="max-w-xs mx-auto flex flex-col items-center gap-4">
       <div className="text-center">
-        <p className="font-armenian-serif text-amber-900 text-base tracking-wide">My Way</p>
-        <p className="font-armenian-sans text-stone-400 text-xs mt-0.5">Frank Sinatra</p>
+        <p className="font-armenian-serif text-amber-900 text-base tracking-wide">Where is my husband</p>
+        <p className="font-armenian-sans text-stone-400 text-xs mt-0.5">Jiandro & Raye</p>
       </div>
       <button onClick={toggle}
         className="w-14 h-14 rounded-full border-2 border-amber-800/40 flex items-center justify-center hover:border-amber-800 hover:bg-amber-800/5 transition-all duration-300">
