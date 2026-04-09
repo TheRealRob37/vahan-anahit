@@ -1,8 +1,10 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { COUPLE, WEDDING_DATE_DISPLAY } from '../config/wedding'
 
 const FooterSection = memo(function FooterSection() {
+  const navigate = useNavigate()
   return (
     <footer className="text-center py-14 px-6" style={{ backgroundColor: '#2c2118' }}>
       <motion.div
@@ -22,6 +24,24 @@ const FooterSection = memo(function FooterSection() {
           Շնորհակալ ենք Ձեր ըմբռնման,<br />
           սիրո և մեզ հետ այս օրը կիսելու պատրաստակամության համար։
         </p>
+        <button
+          onClick={() => navigate('/game')}
+          className="mt-8 inline-flex items-center gap-2 font-armenian-sans text-xs tracking-widest transition-all duration-300 border rounded-full px-5 py-2"
+          style={{
+            color: 'rgba(253,230,138,0.55)',
+            borderColor: 'rgba(253,230,138,0.2)',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.color = 'rgba(253,230,138,0.9)'
+            e.currentTarget.style.borderColor = 'rgba(253,230,138,0.5)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.color = 'rgba(253,230,138,0.55)'
+            e.currentTarget.style.borderColor = 'rgba(253,230,138,0.2)'
+          }}
+        >
+          ◈ Խաղ Սկսել
+        </button>
       </motion.div>
     </footer>
   )
