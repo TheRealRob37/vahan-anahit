@@ -283,9 +283,9 @@ export default function GamePage() {
                       Աիդա, դու հարսնաքուր ես, հերիքա խաղաս 😄
                     </p>
                   )}
-                  {myRank && !saving && (
-                    <p className="font-armenian-sans text-xs mt-2 font-medium" style={{ color: myRank <= 3 ? '#F0D080' : 'rgba(240,208,128,0.45)' }}>
-                      {isRecord ? '🏆 Ռեկորդ!' : myRank <= 3 ? `✦ ${myRank}-րդ տեղ` : `${myRank}-րդ տեղ`}
+                  {!saving && (isRecord || myRank <= 3) && (
+                    <p className="font-armenian-sans text-xs mt-2 font-medium" style={{ color: '#F0D080' }}>
+                      {isRecord ? '🏆 Ռեկորդ!' : myRank === 1 ? '1ին տեղ' : myRank === 2 ? '2րդ տեղ' : '3րդ տեղ'}
                     </p>
                   )}
                 </div>
