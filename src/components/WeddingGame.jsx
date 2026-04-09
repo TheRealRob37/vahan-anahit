@@ -19,12 +19,7 @@ const RING_TYPES = {
   diamond: { color: DIAMOND,shine: DIAMOND_LIGHT, points: 30, glowColor: 0x88eeff, label: '◆',  weight: 1 },
 }
 
-// ── constants ──────────────────────────────────────────────────────────────
-const PILLOW_W     = 120
-const PILLOW_H     = 24
-const PILLOW_SPEED = 8
-const RING_OUTER   = 18
-const RING_INNER   = 10
+// ── base constants (scaled at runtime based on screen width) ───────────────
 const LIVES_MAX    = 3
 const SPAWN_START  = 1200
 const SPAWN_MIN    = 450
@@ -77,6 +72,14 @@ export default function WeddingGame({ onGameOver }) {
       container.appendChild(app.canvas)
       const W = app.screen.width
       const H = app.screen.height
+
+      // ── responsive scaling ───────────────────────────────────────────────
+      const scale       = Math.min(1, W / 390)   // 390 = iPhone 14 reference
+      const PILLOW_W    = Math.round(110 * scale + 30) // 80–140px range
+      const PILLOW_H    = Math.round(22 * scale + 6)
+      const PILLOW_SPEED= 7 + 3 * scale
+      const RING_OUTER  = Math.round(14 * scale + 8)
+      const RING_INNER  = Math.round(RING_OUTER * 0.55)
 
       const onResize = () => app.renderer.resize(container.clientWidth, container.clientHeight)
       window.addEventListener('resize', onResize)
@@ -303,7 +306,7 @@ export default function WeddingGame({ onGameOver }) {
         app.ticker.add(tick)
       }
 
-      // ── touch controls ────────────────────────────────────────────────────
+      // ── touch controls: drag to move pillow ──────────────────────────────
       let lastTouchX = null
       const onTouchStart = e => { lastTouchX = e.touches[0].clientX }
       const onTouchMove  = e => {
@@ -313,9 +316,10 @@ export default function WeddingGame({ onGameOver }) {
         lastTouchX = e.touches[0].clientX
       }
       const onTouchEnd = () => { lastTouchX = null }
-      app.canvas.addEventListener('touchstart', onTouchStart, { passive: true })
-      app.canvas.addEventListener('touchmove',  onTouchMove,  { passive: true })
-      app.canvas.addEventListener('touchend',   onTouchEnd,   { passive: true })
+      app.canvas.addEventListener('touchstart',  onTouchStart,  { passive: true })
+      app.canvas.addEventListener('touchmove',   onTouchMove,   { passive: true })
+      app.canvas.addEventListener('touchend',    onTouchEnd,    { passive: true })
+      app.canvas.addEventListener('touchcancel', onTouchEnd,    { passive: true })
 
       // ── game over overlay ─────────────────────────────────────────────────
       function showGameOver(finalScore) {
@@ -362,7 +366,7 @@ export default function WeddingGame({ onGameOver }) {
 
         if (gameOver) return
 
-        // move pillow
+        // move pillow (keyboard — touch drag handled separately)
         if (keys['ArrowLeft']  || keys['a']) pillowContainer.x = Math.max(PILLOW_W / 2, pillowContainer.x - PILLOW_SPEED * dt)
         if (keys['ArrowRight'] || keys['d']) pillowContainer.x = Math.min(W - PILLOW_W / 2, pillowContainer.x + PILLOW_SPEED * dt)
 
@@ -426,9 +430,10 @@ export default function WeddingGame({ onGameOver }) {
 
       app._cleanupExtras = () => {
         window.removeEventListener('resize', onResize)
-        app.canvas.removeEventListener('touchstart', onTouchStart)
-        app.canvas.removeEventListener('touchmove',  onTouchMove)
-        app.canvas.removeEventListener('touchend',   onTouchEnd)
+        app.canvas.removeEventListener('touchstart',  onTouchStart)
+        app.canvas.removeEventListener('touchmove',   onTouchMove)
+        app.canvas.removeEventListener('touchend',    onTouchEnd)
+        app.canvas.removeEventListener('touchcancel', onTouchEnd)
       }
     })()
 

@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabase'
 
 export default function GamePage() {
   const navigate = useNavigate()
-  const [phase, setPhase] = useState('name')  // 'name' | 'playing' | 'gameover'
+  const [phase, setPhase] = useState('name') // 'name' | 'playing' | 'gameover'
   const [playerName, setPlayerName] = useState('')
   const [inputValue, setInputValue] = useState('')
   const [finalScore, setFinalScore] = useState(0)
@@ -26,9 +26,8 @@ export default function GamePage() {
   const [myRank, setMyRank] = useState(null)
   const inputRef = useRef(null)
 
-  // focus input on mount
   useEffect(() => {
-    if (phase === 'name' && inputRef.current) inputRef.current.focus()
+    if (phase === 'name') setTimeout(() => inputRef.current?.focus(), 300)
   }, [phase])
 
   function handleStart(e) {
@@ -43,26 +42,18 @@ export default function GamePage() {
     setFinalScore(score)
     setPhase('gameover')
     setSaving(true)
-
     try {
-      // save score
       await supabase.from('game_scores').insert({ player_name: playerName, score })
-
-      // fetch top 10
       const { data } = await supabase
         .from('game_scores')
         .select('player_name, score, created_at')
         .order('score', { ascending: false })
         .limit(10)
-
       setLeaderboard(data || [])
-
-      // find rank of just-submitted score
       const { count } = await supabase
         .from('game_scores')
         .select('*', { count: 'exact', head: true })
         .gt('score', score)
-
       setMyRank((count ?? 0) + 1)
     } catch (err) {
       console.error('Leaderboard error:', err)
@@ -79,8 +70,11 @@ export default function GamePage() {
   }
 
   return (
-    <div className="fixed inset-0" style={{ backgroundColor: '#0d0805' }}>
-      {/* back button — always visible */}
+    <div
+      className="fixed inset-0 overflow-hidden"
+      style={{ backgroundColor: '#0d0805', height: '100dvh' }}
+    >
+      {/* back button */}
       <button
         onClick={() => navigate('/')}
         className="absolute top-4 left-4 z-50 font-armenian-sans text-xs transition-colors"
@@ -91,18 +85,18 @@ export default function GamePage() {
         ← Վերադառնալ
       </button>
 
-      {/* game canvas — always mounted so it's instant */}
-      <div className={`absolute inset-0 ${phase === 'playing' ? 'z-10' : 'z-0 pointer-events-none opacity-0'}`}>
-        {phase === 'playing' && (
-          <WeddingGame playerName={playerName} onGameOver={handleGameOver} />
-        )}
-      </div>
-
-      {/* controls hint */}
+      {/* game canvas */}
       {phase === 'playing' && (
-        <p className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 font-armenian-sans text-xs pointer-events-none hidden sm:block"
-           style={{ color: 'rgba(253,230,138,0.25)' }}>
-          ← → կամ A D ստեղներ
+        <div className="absolute inset-0 z-10">
+          <WeddingGame onGameOver={handleGameOver} />
+        </div>
+      )}
+
+      {/* keyboard hint — desktop only */}
+      {phase === 'playing' && (
+        <p className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 hidden sm:block font-armenian-sans text-xs pointer-events-none"
+           style={{ color: 'rgba(253,230,138,0.2)' }}>
+          ← → կամ A D
         </p>
       )}
 
@@ -111,64 +105,56 @@ export default function GamePage() {
         {phase === 'name' && (
           <motion.div
             key="name"
-            className="absolute inset-0 z-30 flex flex-col items-center justify-center px-6"
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center px-5"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.4 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.35 }}
           >
-            {/* decorative stars background */}
+            {/* stars */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               {Array.from({ length: 40 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute rounded-full"
-                  style={{
-                    width: Math.random() * 2 + 1,
-                    height: Math.random() * 2 + 1,
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    backgroundColor: Math.random() > 0.6 ? '#F0D080' : '#ffffff',
-                    opacity: Math.random() * 0.5 + 0.1,
-                  }}
-                />
+                <div key={i} className="absolute rounded-full" style={{
+                  width: Math.random() * 2 + 1,
+                  height: Math.random() * 2 + 1,
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  backgroundColor: Math.random() > 0.6 ? '#F0D080' : '#fff',
+                  opacity: Math.random() * 0.5 + 0.1,
+                }} />
               ))}
             </div>
 
             <motion.div
-              className="relative w-full max-w-sm"
-              initial={{ y: 24, opacity: 0 }}
+              className="relative w-full max-w-xs"
+              initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.15, duration: 0.5 }}
+              transition={{ delay: 0.12, duration: 0.45 }}
             >
-              {/* card */}
-              <div
-                className="rounded-2xl px-8 py-10 text-center"
-                style={{
-                  backgroundColor: 'rgba(17,10,4,0.96)',
-                  border: '1px solid rgba(201,146,42,0.4)',
-                  boxShadow: '0 0 60px rgba(201,146,42,0.12), 0 0 0 1px rgba(201,146,42,0.08) inset',
-                }}
-              >
+              <div className="rounded-2xl px-6 py-8 text-center" style={{
+                backgroundColor: 'rgba(17,10,4,0.97)',
+                border: '1px solid rgba(201,146,42,0.35)',
+                boxShadow: '0 0 60px rgba(201,146,42,0.1)',
+              }}>
                 {/* ring icon */}
-                <div className="mx-auto mb-5 w-14 h-14 flex items-center justify-center">
-                  <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                <div className="mx-auto mb-4 w-12 h-12">
+                  <svg viewBox="0 0 56 56" fill="none" className="w-full h-full">
                     <circle cx="28" cy="28" r="24" stroke="#C9922A" strokeWidth="3" fill="none"/>
                     <circle cx="28" cy="28" r="14" stroke="#C9922A" strokeWidth="2" fill="#0d0805"/>
                     <path d="M14 20 Q28 10 42 20" stroke="#F0D080" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.7"/>
                   </svg>
                 </div>
 
-                <h1 className="font-armenian-serif text-2xl font-light mb-1" style={{ color: '#F0D080' }}>
+                <h1 className="font-armenian-serif text-xl font-light mb-1" style={{ color: '#F0D080' }}>
                   Բռնիր Մատանիները
                 </h1>
-                <p className="font-armenian-sans text-xs mb-8" style={{ color: 'rgba(240,208,128,0.4)', letterSpacing: '0.1em' }}>
+                <p className="font-armenian-sans text-xs mb-6" style={{ color: 'rgba(240,208,128,0.35)', letterSpacing: '0.08em' }}>
                   Վահան & Անահիտ · 2026
                 </p>
 
-                <form onSubmit={handleStart} className="flex flex-col gap-4">
+                <form onSubmit={handleStart} className="flex flex-col gap-3">
                   <div className="text-left">
-                    <label className="font-armenian-sans text-xs block mb-2" style={{ color: 'rgba(253,230,138,0.5)', letterSpacing: '0.08em' }}>
+                    <label className="font-armenian-sans text-xs block mb-1.5" style={{ color: 'rgba(253,230,138,0.45)', letterSpacing: '0.06em' }}>
                       Ձեր անունը
                     </label>
                     <input
@@ -184,8 +170,9 @@ export default function GamePage() {
                         border: '1px solid rgba(201,146,42,0.25)',
                         color: '#f5efe3',
                         caretColor: '#C9922A',
+                        fontSize: 16, // prevent iOS zoom
                       }}
-                      onFocus={e => e.target.style.borderColor = 'rgba(201,146,42,0.7)'}
+                      onFocus={e => e.target.style.borderColor = 'rgba(201,146,42,0.65)'}
                       onBlur={e => e.target.style.borderColor = 'rgba(201,146,42,0.25)'}
                     />
                   </div>
@@ -193,12 +180,8 @@ export default function GamePage() {
                   <button
                     type="submit"
                     disabled={!inputValue.trim()}
-                    className="w-full rounded-xl py-3 font-armenian-sans text-sm font-medium transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                    style={{
-                      backgroundColor: '#C9922A',
-                      color: '#0d0805',
-                      letterSpacing: '0.08em',
-                    }}
+                    className="w-full rounded-xl py-3.5 font-armenian-sans text-sm font-medium transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#C9922A', color: '#0d0805', letterSpacing: '0.06em' }}
                     onMouseEnter={e => { if (inputValue.trim()) e.currentTarget.style.backgroundColor = '#F0D080' }}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = '#C9922A'}
                   >
@@ -206,10 +189,23 @@ export default function GamePage() {
                   </button>
                 </form>
 
-                <div className="mt-6 flex justify-center gap-6 text-xs" style={{ color: 'rgba(240,208,128,0.3)' }}>
-                  <span>◆ Ոսկի · 10 pts</span>
-                  <span>◆ Արծաթ · 15 pts</span>
-                  <span>◆ Ադամանդ · 30 pts</span>
+                {/* ring type legend */}
+                <div className="mt-5 grid grid-cols-3 gap-1 text-xs" style={{ color: 'rgba(240,208,128,0.3)' }}>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span style={{ color: '#C9922A' }}>◉</span>
+                    <span>Ոսկի</span>
+                    <span>10 pts</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span style={{ color: '#C0C0C0' }}>◉</span>
+                    <span>Արծաթ</span>
+                    <span>15 pts</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span style={{ color: '#88ccff' }}>◉</span>
+                    <span>Ադամ.</span>
+                    <span>30 pts</span>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -223,79 +219,68 @@ export default function GamePage() {
           <motion.div
             key="gameover"
             className="absolute inset-0 z-30 flex flex-col items-center justify-center px-4"
-            style={{ backgroundColor: 'rgba(13,8,5,0.88)', backdropFilter: 'blur(4px)' }}
+            style={{ backgroundColor: 'rgba(13,8,5,0.9)', backdropFilter: 'blur(6px)' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.35 }}
           >
             <motion.div
-              className="w-full max-w-sm"
-              initial={{ y: 20, opacity: 0 }}
+              className="w-full max-w-xs"
+              initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.45 }}
+              transition={{ delay: 0.08, duration: 0.4 }}
             >
-              <div
-                className="rounded-2xl overflow-hidden"
-                style={{
-                  backgroundColor: 'rgba(17,10,4,0.98)',
-                  border: '1px solid rgba(201,146,42,0.4)',
-                  boxShadow: '0 0 80px rgba(201,146,42,0.15)',
-                }}
-              >
-                {/* header */}
-                <div className="px-6 pt-7 pb-5 text-center" style={{ borderBottom: '1px solid rgba(201,146,42,0.12)' }}>
-                  <p className="font-armenian-sans text-xs mb-1" style={{ color: 'rgba(240,208,128,0.45)', letterSpacing: '0.12em' }}>
+              <div className="rounded-2xl overflow-hidden" style={{
+                backgroundColor: 'rgba(17,10,4,0.99)',
+                border: '1px solid rgba(201,146,42,0.35)',
+                boxShadow: '0 0 80px rgba(201,146,42,0.12)',
+              }}>
+                {/* score header */}
+                <div className="px-6 pt-6 pb-4 text-center" style={{ borderBottom: '1px solid rgba(201,146,42,0.1)' }}>
+                  <p className="font-armenian-sans text-xs mb-1" style={{ color: 'rgba(240,208,128,0.4)', letterSpacing: '0.1em' }}>
                     Խաղն ավարտվեց
                   </p>
-                  <p className="font-armenian-serif text-4xl font-light" style={{ color: '#F0D080' }}>
+                  <p className="font-armenian-serif text-5xl font-light" style={{ color: '#F0D080' }}>
                     {finalScore}
                   </p>
-                  <p className="font-armenian-sans text-xs mt-0.5" style={{ color: 'rgba(240,208,128,0.35)' }}>
+                  <p className="font-armenian-sans text-xs mt-0.5" style={{ color: 'rgba(240,208,128,0.3)' }}>
                     միավոր · {playerName}
                   </p>
                   {myRank && !saving && (
-                    <p className="font-armenian-sans text-xs mt-2" style={{ color: myRank <= 3 ? '#F0D080' : 'rgba(240,208,128,0.5)' }}>
+                    <p className="font-armenian-sans text-xs mt-2 font-medium" style={{ color: myRank <= 3 ? '#F0D080' : 'rgba(240,208,128,0.45)' }}>
                       {myRank === 1 ? '🏆 Ռեկորդ!' : myRank <= 3 ? `✦ ${myRank}-րդ տեղ` : `${myRank}-րդ տեղ`}
                     </p>
                   )}
                 </div>
 
                 {/* leaderboard */}
-                <div className="px-6 py-4">
-                  <p className="font-armenian-sans text-xs mb-3" style={{ color: 'rgba(240,208,128,0.4)', letterSpacing: '0.1em' }}>
+                <div className="px-5 py-3">
+                  <p className="font-armenian-sans text-xs mb-2" style={{ color: 'rgba(240,208,128,0.35)', letterSpacing: '0.08em' }}>
                     Լավագույն 10
                   </p>
 
                   {saving ? (
-                    <div className="flex justify-center py-6">
+                    <div className="flex justify-center py-5">
                       <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: 'rgba(201,146,42,0.3)', borderTopColor: '#C9922A' }} />
                     </div>
-                  ) : leaderboard.length === 0 ? (
-                    <p className="text-center py-4 font-armenian-sans text-xs" style={{ color: 'rgba(240,208,128,0.3)' }}>
-                      Տվյալ չկա
-                    </p>
                   ) : (
-                    <ol className="space-y-1.5">
+                    <ol className="space-y-1">
                       {leaderboard.map((row, i) => {
                         const isMe = row.player_name === playerName && row.score === finalScore
                         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
                         return (
-                          <li
-                            key={i}
-                            className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors"
-                            style={{
-                              backgroundColor: isMe ? 'rgba(201,146,42,0.12)' : 'transparent',
-                              border: isMe ? '1px solid rgba(201,146,42,0.25)' : '1px solid transparent',
-                            }}
-                          >
-                            <span className="text-sm w-6 text-center flex-shrink-0" style={{ color: i < 3 ? '#F0D080' : 'rgba(240,208,128,0.35)' }}>
+                          <li key={i} className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5" style={{
+                            backgroundColor: isMe ? 'rgba(201,146,42,0.1)' : 'transparent',
+                            border: isMe ? '1px solid rgba(201,146,42,0.22)' : '1px solid transparent',
+                          }}>
+                            <span className="text-sm w-5 text-center flex-shrink-0" style={{ color: i < 3 ? '#F0D080' : 'rgba(240,208,128,0.3)' }}>
                               {medal}
                             </span>
-                            <span className="font-armenian-sans text-xs flex-1 truncate" style={{ color: isMe ? '#f5efe3' : 'rgba(245,239,227,0.65)' }}>
+                            <span className="font-armenian-sans text-xs flex-1 truncate" style={{ color: isMe ? '#f5efe3' : 'rgba(245,239,227,0.55)' }}>
                               {row.player_name}
                             </span>
-                            <span className="font-armenian-sans text-xs font-medium flex-shrink-0" style={{ color: isMe ? '#F0D080' : 'rgba(240,208,128,0.55)' }}>
+                            <span className="font-armenian-sans text-xs font-semibold flex-shrink-0" style={{ color: isMe ? '#F0D080' : 'rgba(240,208,128,0.45)' }}>
                               {row.score}
                             </span>
                           </li>
@@ -306,11 +291,11 @@ export default function GamePage() {
                 </div>
 
                 {/* actions */}
-                <div className="px-6 pb-6 flex flex-col gap-2.5" style={{ borderTop: '1px solid rgba(201,146,42,0.12)', paddingTop: '1rem' }}>
+                <div className="px-5 pb-5 flex flex-col gap-2" style={{ borderTop: '1px solid rgba(201,146,42,0.1)', paddingTop: '0.875rem' }}>
                   <button
                     onClick={handlePlayAgain}
-                    className="w-full rounded-xl py-3 font-armenian-sans text-sm font-medium transition-all duration-200"
-                    style={{ backgroundColor: '#C9922A', color: '#0d0805', letterSpacing: '0.06em' }}
+                    className="w-full rounded-xl py-3.5 font-armenian-sans text-sm font-medium transition-all duration-200"
+                    style={{ backgroundColor: '#C9922A', color: '#0d0805', letterSpacing: '0.05em' }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F0D080'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = '#C9922A'}
                   >
@@ -319,9 +304,9 @@ export default function GamePage() {
                   <button
                     onClick={() => navigate('/')}
                     className="w-full rounded-xl py-2.5 font-armenian-sans text-xs transition-all duration-200"
-                    style={{ color: 'rgba(240,208,128,0.45)', border: '1px solid rgba(201,146,42,0.15)' }}
+                    style={{ color: 'rgba(240,208,128,0.4)', border: '1px solid rgba(201,146,42,0.12)' }}
                     onMouseEnter={e => e.currentTarget.style.color = 'rgba(240,208,128,0.8)'}
-                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,208,128,0.45)'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,208,128,0.4)'}
                   >
                     ← Վերադառնալ
                   </button>
