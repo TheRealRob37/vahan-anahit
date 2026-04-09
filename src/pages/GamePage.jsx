@@ -37,6 +37,7 @@ export default function GamePage() {
   const [leaderboard, setLeaderboard] = useState([])
   const [saving, setSaving] = useState(false)
   const [myRank, setMyRank] = useState(null)
+  const [isRecord, setIsRecord] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -56,7 +57,16 @@ export default function GamePage() {
     setPhase('gameover')
     setSaving(true)
     try {
+      // check existing top score before inserting
+      const { data: topRow } = await supabase
+        .from('game_scores')
+        .select('score')
+        .order('score', { ascending: false })
+        .limit(1)
+        .single()
+      const prevBest = topRow?.score ?? 0
       await supabase.from('game_scores').insert({ player_name: playerName, score })
+      setIsRecord(score > prevBest)
       const { data } = await supabase
         .from('game_scores')
         .select('player_name, score, created_at')
@@ -79,6 +89,7 @@ export default function GamePage() {
     setInputValue('')
     setLeaderboard([])
     setMyRank(null)
+    setIsRecord(false)
   }
 
   return (
@@ -261,7 +272,7 @@ export default function GamePage() {
                   </p>
                   {myRank && !saving && (
                     <p className="font-armenian-sans text-xs mt-2 font-medium" style={{ color: myRank <= 3 ? '#F0D080' : 'rgba(240,208,128,0.45)' }}>
-                      {myRank === 1 ? '🏆 Ռեկորդ!' : myRank <= 3 ? `✦ ${myRank}-րդ տեղ` : `${myRank}-րդ տեղ`}
+                      {isRecord ? '🏆 Ռեկորդ!' : myRank <= 3 ? `✦ ${myRank}-րդ տեղ` : `${myRank}-րդ տեղ`}
                     </p>
                   )}
                 </div>
