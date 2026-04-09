@@ -278,7 +278,7 @@ export default function GamePage() {
                   <p className="font-armenian-sans text-xs mt-0.5" style={{ color: 'rgba(240,208,128,0.3)' }}>
                     միավոր · {playerName}
                   </p>
-                  {playerName.trim().toLowerCase() === 'aida' && (
+                  {playerName.trim().toLowerCase().startsWith('aida') && (
                     <p className="font-armenian-sans text-xs mt-2 italic" style={{ color: 'rgba(220,136,136,0.85)' }}>
                       Աիդա, դու հարսնաքուր ես, հերիքա խաղաս 😄
                     </p>
