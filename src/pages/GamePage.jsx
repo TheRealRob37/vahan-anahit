@@ -270,6 +270,11 @@ export default function GamePage() {
                   <p className="font-armenian-sans text-xs mt-0.5" style={{ color: 'rgba(240,208,128,0.3)' }}>
                     միավոր · {playerName}
                   </p>
+                  {playerName.trim().toLowerCase() === 'aida' && (
+                    <p className="font-armenian-sans text-xs mt-2 italic" style={{ color: 'rgba(220,136,136,0.85)' }}>
+                      Աիդա, դու հարսնաքուր ես, հերիքա խաղաս 😄
+                    </p>
+                  )}
                   {myRank && !saving && (
                     <p className="font-armenian-sans text-xs mt-2 font-medium" style={{ color: myRank <= 3 ? '#F0D080' : 'rgba(240,208,128,0.45)' }}>
                       {isRecord ? '🏆 Ռեկորդ!' : myRank <= 3 ? `✦ ${myRank}-րդ տեղ` : `${myRank}-րդ տեղ`}
