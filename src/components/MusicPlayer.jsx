@@ -4,11 +4,11 @@ import { motion, useAnimation } from 'framer-motion'
 const SRC = `${import.meta.env.BASE_URL}where-is-my-husband.mp3`
 
 // Single shared audio instance — prevents double playback when both players are in the DOM
-const audio = new Audio(SRC)
+export const audio = new Audio(SRC)
 audio.preload = 'auto'
 
-// Autoplay only on the invitation page (not admin)
-if (!window.location.pathname.includes('/admin')) {
+// Autoplay only on the invitation page (not admin, not game)
+if (!window.location.pathname.includes('/admin') && !window.location.pathname.includes('/game')) {
   audio.play().catch(() => {
     const resume = () => {
       audio.play().catch(() => {})

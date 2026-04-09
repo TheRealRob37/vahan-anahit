@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import WeddingGame from '../components/WeddingGame'
 import { supabase } from '../lib/supabase'
+import { audio as bgMusic } from '../components/MusicPlayer'
 
 // ── SQL to run once in Supabase dashboard ─────────────────────────────────
 // CREATE TABLE game_scores (
@@ -39,6 +40,13 @@ export default function GamePage() {
   const [myRank, setMyRank] = useState(null)
   const [isRecord, setIsRecord] = useState(false)
   const inputRef = useRef(null)
+
+  // Pause music while on game page, resume when leaving
+  useEffect(() => {
+    const wasPlaying = !bgMusic.paused
+    bgMusic.pause()
+    return () => { if (wasPlaying) bgMusic.play().catch(() => {}) }
+  }, [])
 
   useEffect(() => {
     if (phase === 'name') setTimeout(() => inputRef.current?.focus(), 300)
