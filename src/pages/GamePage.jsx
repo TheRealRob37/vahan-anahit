@@ -15,6 +15,19 @@ import { supabase } from '../lib/supabase'
 // CREATE POLICY "anyone can insert" ON game_scores FOR INSERT WITH CHECK (true);
 // CREATE POLICY "anyone can read"   ON game_scores FOR SELECT USING (true);
 
+// Keep only each player's best score (data must be pre-sorted by score DESC)
+function bestPerPlayer(data, limit = Infinity) {
+  const seen = new Set()
+  const out = []
+  for (const row of data) {
+    if (seen.has(row.player_name)) continue
+    seen.add(row.player_name)
+    out.push(row)
+    if (out.length >= limit) break
+  }
+  return out
+}
+
 export default function GamePage() {
   const navigate = useNavigate()
   const [phase, setPhase] = useState('name') // 'name' | 'playing' | 'gameover'
@@ -48,13 +61,12 @@ export default function GamePage() {
         .from('game_scores')
         .select('player_name, score, created_at')
         .order('score', { ascending: false })
-        .limit(10)
-      setLeaderboard(data || [])
-      const { count } = await supabase
-        .from('game_scores')
-        .select('*', { count: 'exact', head: true })
-        .gt('score', score)
-      setMyRank((count ?? 0) + 1)
+        .limit(200)
+      setLeaderboard(bestPerPlayer(data || [], 10))
+      // rank = number of unique players with a better best score
+      const top = bestPerPlayer(data || [])
+      const rank = top.findIndex(r => r.player_name === playerName)
+      setMyRank(rank >= 0 ? rank + 1 : top.length + 1)
     } catch (err) {
       console.error('Leaderboard error:', err)
     } finally {

@@ -7,6 +7,18 @@ import { COUPLE, WEDDING_DATE_SHORT } from '../config/wedding'
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin'
 
+function bestPerPlayer(data, limit = Infinity) {
+  const seen = new Set()
+  const out = []
+  for (const row of data) {
+    if (seen.has(row.player_name)) continue
+    seen.add(row.player_name)
+    out.push(row)
+    if (out.length >= limit) break
+  }
+  return out
+}
+
 function LoginScreen({ onLogin }) {
   const [pw, setPw] = useState('')
   const [err, setErr] = useState(false)
@@ -186,10 +198,10 @@ function AdminDashboard() {
     setLoading(true)
     const [{ data: rsvp }, { data: scores }] = await Promise.all([
       supabase.from('rsvp_responses').select('*').order('created_at', { ascending: false }),
-      supabase.from('game_scores').select('player_name, score, created_at').order('score', { ascending: false }).limit(20),
+      supabase.from('game_scores').select('player_name, score, created_at').order('score', { ascending: false }).limit(500),
     ])
     if (rsvp) setRows(rsvp)
-    if (scores) setTopPlayers(scores)
+    if (scores) setTopPlayers(bestPerPlayer(scores, 20))
     setLoading(false)
   }, [])
 
