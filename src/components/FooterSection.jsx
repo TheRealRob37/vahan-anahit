@@ -26,10 +26,21 @@ const FooterSection = memo(function FooterSection() {
         </p>
         <button
           onClick={() => navigate('/game')}
-          className="mt-8 font-armenian-sans text-amber-200/20 hover:text-amber-200/60 text-xs transition-colors duration-300"
-          style={{ letterSpacing: '0.15em' }}
+          className="mt-8 inline-flex items-center gap-2 font-armenian-sans text-xs tracking-widest transition-all duration-300 border rounded-full px-5 py-2"
+          style={{
+            color: 'rgba(253,230,138,0.55)',
+            borderColor: 'rgba(253,230,138,0.2)',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.color = 'rgba(253,230,138,0.9)'
+            e.currentTarget.style.borderColor = 'rgba(253,230,138,0.5)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.color = 'rgba(253,230,138,0.55)'
+            e.currentTarget.style.borderColor = 'rgba(253,230,138,0.2)'
+          }}
         >
-          ◈
+          ◈ Խաղ Սկսել
         </button>
       </motion.div>
     </footer>
