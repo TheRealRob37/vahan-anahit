@@ -404,12 +404,11 @@ export default function WeddingGame({ onGameOver }) {
 
           if (inX && inY) {
             combo++
-            const multiplier = Math.min(combo, 8)
-            const pts = ring._type.points * multiplier
+            const pts = ring._type.points * combo
             score += pts
             updateHUD()
             spawnSparkles(ring.x, pillowContainer.y, ring._type.glowColor)
-            floatText(combo > 1 ? `+${pts} ×${multiplier}` : `+${pts}`, ring.x, pillowContainer.y - 30, ring._type.glowColor)
+            floatText(combo > 1 ? `+${pts} ×${combo}` : `+${pts}`, ring.x, pillowContainer.y - 30, ring._type.glowColor)
             squishPillow()
             app.stage.removeChild(ring); ring.destroy()
             return false
