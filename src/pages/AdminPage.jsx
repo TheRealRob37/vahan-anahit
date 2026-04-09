@@ -180,14 +180,16 @@ function AdminDashboard() {
   const [editRow, setEditRow] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
+  const [topPlayers, setTopPlayers] = useState([])
 
   const fetchRSVPs = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('rsvp_responses')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (!error) setRows(data || [])
+    const [{ data: rsvp }, { data: scores }] = await Promise.all([
+      supabase.from('rsvp_responses').select('*').order('created_at', { ascending: false }),
+      supabase.from('game_scores').select('player_name, score, created_at').order('score', { ascending: false }).limit(20),
+    ])
+    if (rsvp) setRows(rsvp)
+    if (scores) setTopPlayers(scores)
     setLoading(false)
   }, [])
 
@@ -291,6 +293,44 @@ function AdminDashboard() {
           <StatCard label="Կգան" value={attendingCount} color="text-green-600" />
           <StatCard label="Չեն Գա" value={notAttendingCount} color="text-red-500" />
         </div>
+
+        {/* Top Players */}
+        {topPlayers.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
+            <div className="px-5 py-3 border-b border-stone-100 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-stone-700">◈ Լավագույն Խաղացողներ</h2>
+              <span className="text-xs text-stone-400">{topPlayers.length} արդյունք</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-stone-100 bg-stone-50">
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-stone-500 uppercase tracking-wider">#</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-stone-500 uppercase tracking-wider">Անուն</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-stone-500 uppercase tracking-wider">Միավոր</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-stone-500 uppercase tracking-wider">Ամսաթիվ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topPlayers.map((p, i) => (
+                    <tr key={i} className="border-b border-stone-50 hover:bg-amber-50/40 transition">
+                      <td className="px-5 py-3 text-xs font-medium" style={{ color: i === 0 ? '#b45309' : i === 1 ? '#78716c' : i === 2 ? '#92400e' : '#a8a29e' }}>
+                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                      </td>
+                      <td className="px-5 py-3 font-medium text-stone-800">{p.player_name}</td>
+                      <td className="px-5 py-3">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-100">
+                          {p.score}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-stone-400 text-xs whitespace-nowrap">{formatDate(p.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-stone-100 flex flex-wrap gap-3 items-center">
