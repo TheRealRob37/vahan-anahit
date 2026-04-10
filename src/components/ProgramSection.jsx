@@ -1,22 +1,8 @@
 import FadeIn from './FadeIn'
+import { config } from '../config/wedding'
 
-const GROUPS = [
-  {
-    venue: 'Սուրբ Հռիփսիմե եկեղեցի, Էջմիածին',
-    mapsUrl: 'https://yandex.com/maps/org/35208500744/?ll=44.309617%2C40.167003&z=16',
-    items: [
-      { time: '14:45', title: 'Պսակադրություն' },
-    ],
-  },
-  {
-    venue: '«Արիա» ռեստորան, Երևան',
-    mapsUrl: 'https://yandex.com/maps/org/1709327076/?ll=44.576119%2C40.190755&z=16.26',
-    items: [
-      { time: '17:00', title: 'Ամուսնության գրանցում' },
-      { time: '18:00', title: 'Հարսանեկան ընթրիք' },
-    ],
-  },
-]
+const { mapLinkLabel, timePrefix } = config.copy
+const GROUPS = config.program
 
 export default function ProgramSection() {
   return (
@@ -29,7 +15,7 @@ export default function ProgramSection() {
                 <div className="space-y-4 sm:space-y-5 mb-4">
                   {group.items.map((item, ii) => (
                     <div key={item.time} className={ii > 0 ? 'pt-4 border-t border-amber-100/60' : ''}>
-                      <p className="font-armenian-sans text-xs sm:text-sm text-amber-700 font-medium tracking-wider mb-0.5">Ժամը {item.time}</p>
+                      <p className="font-armenian-sans text-xs sm:text-sm text-amber-700 font-medium tracking-wider mb-0.5">{timePrefix}{item.time}</p>
                       <h4 className="font-armenian-serif text-xl sm:text-2xl md:text-3xl text-stone-800 leading-tight">{item.title}</h4>
                       {item.subtitle && <p className="font-armenian-sans text-sm text-stone-500 mt-1">{item.subtitle}</p>}
                     </div>
@@ -47,7 +33,7 @@ export default function ProgramSection() {
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                       <circle cx="12" cy="10" r="3"/>
                     </svg>
-                    Քարտեզ
+                    {mapLinkLabel}
                   </a>
                 </div>
               </div>

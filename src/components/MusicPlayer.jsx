@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react'
 import { motion, useAnimation } from 'framer-motion'
+import { config } from '../config/wedding'
 
-const SRC = `${import.meta.env.BASE_URL}where-is-my-husband.mp3`
+const {
+  file: musicFile,
+  title: musicTitle,
+  artist: musicArtist,
+} = config.assets.music
+
+const SRC = `${import.meta.env.BASE_URL}${musicFile}`
 
 // Single shared audio instance — prevents double playback when both players are in the DOM
 export const audio = new Audio(SRC)
 audio.preload = 'auto'
 
-// Autoplay only on the invitation page (not admin, not game)
-if (!window.location.pathname.includes('/admin') && !window.location.pathname.includes('/game')) {
+// Autoplay only on the invitation page, never on admin screens.
+if (!window.location.pathname.includes('/admin')) {
   audio.play().catch(() => {
     const resume = () => {
       audio.play().catch(() => {})
@@ -140,8 +147,8 @@ function FullPlayer() {
   return (
     <div className="max-w-xs mx-auto flex flex-col items-center gap-4">
       <div className="text-center">
-        <p className="font-armenian-serif text-amber-900 text-base tracking-wide">Where is my husband</p>
-        <p className="font-armenian-sans text-stone-400 text-xs mt-0.5">Jiandro & Raye</p>
+        <p className="font-armenian-serif text-amber-900 text-base tracking-wide">{musicTitle}</p>
+        <p className="font-armenian-sans text-stone-400 text-xs mt-0.5">{musicArtist}</p>
       </div>
       <button onClick={toggle}
         className="w-14 h-14 rounded-full border-2 border-amber-800/40 flex items-center justify-center hover:border-amber-800 hover:bg-amber-800/5 transition-all duration-300">

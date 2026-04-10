@@ -2,14 +2,19 @@ import { Fragment } from 'react'
 import { motion } from 'framer-motion'
 import MusicPlayer from './MusicPlayer'
 import Stars from './Stars'
-import { GROOM, BRIDE, WEDDING_DATE_PARTS } from '../config/wedding'
+import { config } from '../config/wedding'
+
+const { person1, person2, separator } = config.couple
+const { saveTheDate } = config.copy.hero
+const heroBackground = `${import.meta.env.BASE_URL}${config.assets.backgroundImage}`
+const { displayParts } = config.date
 
 export default function HeroSection() {
   return (
     <section className="relative min-h-screen flex flex-col overflow-hidden">
       <div className="absolute inset-0 overflow-hidden">
         <img
-          src={`${import.meta.env.BASE_URL}background.jpg`}
+          src={heroBackground}
           alt=""
           fetchPriority="high"
           decoding="async"
@@ -23,7 +28,7 @@ export default function HeroSection() {
       {/* Save the Date + vinyl — mobile: flex-1 so it fills space above names naturally */}
       <div className="md:hidden relative z-10 flex flex-col items-center justify-center flex-1 pb-4">
         <div className="flex flex-col items-center leading-none">
-          {['Save', 'the', 'Date'].map(word => (
+          {saveTheDate.map(word => (
             <span
               key={word}
               className="font-carolina text-amber-200/50 block"
@@ -41,7 +46,7 @@ export default function HeroSection() {
       {/* Save the Date + vinyl — desktop */}
       <div className="hidden md:flex absolute inset-0 flex-col items-center justify-start z-10" style={{ paddingTop: '8vh' }}>
         <span className="font-carolina text-amber-200/50" style={{ fontSize: 'clamp(3rem, 6vw, 5.5rem)', lineHeight: 1 }}>
-          Save the Date
+          {saveTheDate.join(' ')}
         </span>
         <div className="mt-5">
           <MusicPlayer vinyl />
@@ -58,18 +63,18 @@ export default function HeroSection() {
             className="font-armenian-serif text-white leading-none mb-4"
             style={{ fontSize: 'clamp(3rem, 12vw, 7rem)', fontWeight: 300, letterSpacing: '-0.02em' }}
           >
-            {GROOM}
+            {person1}
           </h1>
           <div className="flex items-center gap-4 justify-center mb-4">
             <div className="h-px flex-1 max-w-[80px] bg-amber-200/30" />
-            <span className="font-armenian-serif text-amber-200/80 text-3xl font-light">&</span>
+            <span className="font-armenian-serif text-amber-200/80 text-3xl font-light">{separator}</span>
             <div className="h-px flex-1 max-w-[80px] bg-amber-200/30" />
           </div>
           <h2
             className="font-armenian-serif text-white leading-none mb-8"
             style={{ fontSize: 'clamp(3rem, 12vw, 7rem)', fontWeight: 300, letterSpacing: '-0.02em' }}
           >
-            {BRIDE}
+            {person2}
           </h2>
         </motion.div>
 
@@ -79,7 +84,7 @@ export default function HeroSection() {
           transition={{ duration: 1, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="flex justify-center gap-px mb-8"
         >
-          {WEDDING_DATE_PARTS.map((value, i) => (
+          {displayParts.map((value, i) => (
             <Fragment key={value}>
               {i > 0 && <div className="w-px bg-amber-200/20 mx-3" />}
               <div className="text-center px-3">

@@ -1,10 +1,22 @@
 import { useState, useEffect, memo } from 'react'
 import FadeIn from './FadeIn'
-import { WEDDING_DATE } from '../config/wedding'
+import { WEDDING_DATE, config } from '../config/wedding'
+
+const { dayNames, monthLabel } = config.copy.calendar
+const { days: daysLabel, hours: hoursLabel, minutes: minutesLabel, seconds: secondsLabel } = config.copy.countdown
+
+// Derive calendar grid from the wedding date — works for any month/year
+const year = WEDDING_DATE.getFullYear()
+const month = WEDDING_DATE.getMonth()
+const highlightDay = WEDDING_DATE.getDate()
+const daysInMonth = new Date(year, month + 1, 0).getDate()
+// Monday-based offset: Sunday(0)→6, Monday(1)→0, …
+const startOffset = (new Date(year, month, 1).getDay() + 6) % 7
+const CELLS = [...Array(startOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
 
 function useCountdown() {
   const calc = () => {
-    const diff = WEDDING_DATE - Date.now()
+    const diff = WEDDING_DATE.getTime() - Date.now()
     if (diff <= 0) return null
     return {
       days:    Math.floor(diff / 86400000),
@@ -29,10 +41,10 @@ const Countdown = memo(function Countdown() {
     <FadeIn delay={0.25}>
       <div className="flex justify-center gap-6 sm:gap-10 mt-10">
         {[
-          { value: countdown.days,    label: 'օր' },
-          { value: countdown.hours,   label: 'ժամ' },
-          { value: countdown.minutes, label: 'րոպե' },
-          { value: countdown.seconds, label: 'վայրկ' },
+          { value: countdown.days,    label: daysLabel },
+          { value: countdown.hours,   label: hoursLabel },
+          { value: countdown.minutes, label: minutesLabel },
+          { value: countdown.seconds, label: secondsLabel },
         ].map(({ value, label }) => (
           <div key={label} className="text-center">
             <div className="font-armenian-serif text-amber-900 tabular-nums" style={{ fontSize: 'clamp(1.6rem, 6vw, 2.4rem)', fontWeight: 300, lineHeight: 1 }}>
@@ -48,18 +60,15 @@ const Countdown = memo(function Countdown() {
   )
 })
 
-const DAYS = ['Երկ', 'Երք', 'Չոր', 'Հինգ', 'Ուրբ', 'Շաբ', 'Կիր']
-const CELLS = [...Array(2).fill(null), ...Array.from({ length: 30 }, (_, i) => i + 1)]
-
 export default function CalendarSection() {
   return (
     <section style={{ backgroundColor: '#faf7f4' }} className="px-6 pt-16 pb-14">
       <div className="max-w-md mx-auto">
         <FadeIn delay={0.15}>
           <div className="w-full max-w-xs mx-auto">
-            <p className="text-center font-armenian-serif text-4xl mb-6" style={{ color: 'rgb(74, 44, 26)' }}>Ապրիլ 2026</p>
+            <p className="text-center font-armenian-serif text-4xl mb-6" style={{ color: 'rgb(74, 44, 26)' }}>{monthLabel}</p>
             <div className="grid grid-cols-7 mb-2">
-              {DAYS.map(d => (
+              {dayNames.map(d => (
                 <div key={d} className="text-center text-xs font-armenian-sans text-amber-800/70 font-medium py-1">
                   {d}
                 </div>
@@ -68,7 +77,7 @@ export default function CalendarSection() {
             <div className="grid grid-cols-7 gap-y-1">
               {CELLS.map((day, i) => (
                 <div key={i} className="flex items-center justify-center h-8">
-                  {day === 25 ? (
+                  {day === highlightDay ? (
                     <div className="date-circle font-armenian-serif text-sm font-semibold text-amber-900">{day}</div>
                   ) : day ? (
                     <span className="font-armenian-sans text-sm text-stone-600">{day}</span>

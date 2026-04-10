@@ -4,7 +4,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import InvitationPage from './pages/InvitationPage'
 import AdminPage from './pages/AdminPage'
-import GamePage from './pages/GamePage'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -12,7 +11,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path="/" element={<InvitationPage />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/game" element={<GamePage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

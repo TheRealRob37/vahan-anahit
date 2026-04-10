@@ -3,20 +3,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
-import { COUPLE, WEDDING_DATE_SHORT } from '../config/wedding'
+import { COUPLE, WEDDING_DATE_SHORT, config } from '../config/wedding'
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin'
+const RSVP_TABLE = config.rsvp.tableName
+const RSVP_SIDES = config.rsvp.sides
+const DEFAULT_SIDE = RSVP_SIDES[0]?.value ?? ''
 
-function bestPerPlayer(data, limit = Infinity) {
-  const seen = new Set()
-  const out = []
-  for (const row of data) {
-    if (seen.has(row.player_name)) continue
-    seen.add(row.player_name)
-    out.push(row)
-    if (out.length >= limit) break
-  }
-  return out
+function getSideMeta(value) {
+  return RSVP_SIDES.find(side => side.value === value) ?? RSVP_SIDES[0]
 }
 
 function LoginScreen({ onLogin }) {
@@ -76,7 +71,7 @@ function EditModal({ row, onSave, onClose }) {
     name2: row.name2 || '',
     surname2: row.surname2 || '',
     attending: row.attending || 'yes',
-    host: row.host || 'vahan',
+    host: row.host || DEFAULT_SIDE,
     guests: row.guests ?? 1,
   })
   const [saving, setSaving] = useState(false)
@@ -98,11 +93,11 @@ function EditModal({ row, onSave, onClose }) {
       guests: Number(form.guests),
     }
     if (isNew) {
-      const { data, error } = await supabase.from('rsvp_responses').insert(payload).select().single()
+      const { data, error } = await supabase.from(RSVP_TABLE).insert(payload).select().single()
       if (error) { setErr(error.message); setSaving(false); return }
       onSave(data)
     } else {
-      const { error } = await supabase.from('rsvp_responses').update(payload).eq('id', row.id)
+      const { error } = await supabase.from(RSVP_TABLE).update(payload).eq('id', row.id)
       if (error) { setErr(error.message); setSaving(false); return }
       onSave({ ...row, ...payload })
     }
@@ -156,8 +151,9 @@ function EditModal({ row, onSave, onClose }) {
               <label className="text-xs text-stone-500 mb-1 block">Կողմ</label>
               <select value={form.host} onChange={e => set('host', e.target.value)}
                 className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm outline-none focus:border-amber-700 transition bg-white">
-                <option value="vahan">Փեսայի</option>
-                <option value="anahit">Հարսի</option>
+                {RSVP_SIDES.map(side => (
+                  <option key={side.value} value={side.value}>{side.shortLabel}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -192,16 +188,11 @@ function AdminDashboard() {
   const [editRow, setEditRow] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [deleteError, setDeleteError] = useState(null)
-  const [topPlayers, setTopPlayers] = useState([])
 
   const fetchRSVPs = useCallback(async () => {
     setLoading(true)
-    const [{ data: rsvp }, { data: scores }] = await Promise.all([
-      supabase.from('rsvp_responses').select('*').order('created_at', { ascending: false }),
-      supabase.from('game_scores').select('player_name, score, created_at').order('score', { ascending: false }).limit(500),
-    ])
+    const { data: rsvp } = await supabase.from(RSVP_TABLE).select('*').order('created_at', { ascending: false })
     if (rsvp) setRows(rsvp)
-    if (scores) setTopPlayers(bestPerPlayer(scores, 20))
     setLoading(false)
   }, [])
 
@@ -210,7 +201,7 @@ function AdminDashboard() {
   }, [fetchRSVPs])
 
   const deleteRow = async (id) => {
-    const { error } = await supabase.from('rsvp_responses').delete().eq('id', id)
+    const { error } = await supabase.from(RSVP_TABLE).delete().eq('id', id)
     if (error) {
       setDeleteError('Ջնջումը ձախողվեց: ' + error.message)
       setConfirmDeleteId(null)
@@ -306,44 +297,6 @@ function AdminDashboard() {
           <StatCard label="Չեն Գա" value={notAttendingCount} color="text-red-500" />
         </div>
 
-        {/* Top Players */}
-        {topPlayers.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-stone-100 overflow-hidden">
-            <div className="px-5 py-3 border-b border-stone-100 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-stone-700">◈ Լավագույն Խաղացողներ</h2>
-              <span className="text-xs text-stone-400">{topPlayers.length} արդյունք</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-stone-100 bg-stone-50">
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-stone-500 uppercase tracking-wider">#</th>
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-stone-500 uppercase tracking-wider">Անուն</th>
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-stone-500 uppercase tracking-wider">Միավոր</th>
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-stone-500 uppercase tracking-wider">Ամսաթիվ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topPlayers.map((p, i) => (
-                    <tr key={i} className="border-b border-stone-50 hover:bg-amber-50/40 transition">
-                      <td className="px-5 py-3 text-xs font-medium" style={{ color: i === 0 ? '#b45309' : i === 1 ? '#78716c' : i === 2 ? '#92400e' : '#a8a29e' }}>
-                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
-                      </td>
-                      <td className="px-5 py-3 font-medium text-stone-800">{p.player_name}</td>
-                      <td className="px-5 py-3">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-100">
-                          {p.score}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-stone-400 text-xs whitespace-nowrap">{formatDate(p.created_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
         {/* Filters */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-stone-100 flex flex-wrap gap-3 items-center">
           <input
@@ -367,9 +320,8 @@ function AdminDashboard() {
           </div>
           <div className="flex gap-2">
             {[
-              { val: 'all',    label: 'Երկու Կողմ' },
-              { val: 'anahit', label: 'Հարսի Կողմ' },
-              { val: 'vahan',  label: 'Փեսայի Կողմ' },
+              { val: 'all', label: 'Երկու Կողմ' },
+              ...RSVP_SIDES.map(side => ({ val: side.value, label: `${side.shortLabel} Կողմ` })),
             ].map(f => (
               <button key={f.val} onClick={() => setSideFilter(f.val)}
                 className={`px-4 py-1.5 rounded-full text-xs border transition ${sideFilter === f.val ? 'bg-stone-700 text-white border-stone-700' : 'border-stone-300 text-stone-600 hover:border-stone-500'}`}>
@@ -431,8 +383,8 @@ function AdminDashboard() {
                         )}
                       </td>
                       <td className="px-5 py-4">
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${r.host === 'anahit' ? 'bg-pink-50 text-pink-700 border border-pink-100' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
-                          {r.host === 'anahit' ? '💐 Հարսի' : '🤵 Փեսայի'}
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${r.host === RSVP_SIDES[0]?.value ? 'bg-pink-50 text-pink-700 border border-pink-100' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
+                          {getSideMeta(r.host)?.shortLabel}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-stone-600">{r.guests}</td>
@@ -502,7 +454,7 @@ function exportCSV(rows) {
   const lines = rows.filter(r => r.attending === 'yes').map(r => [
     `${r.name1} ${r.surname1}`,
     r.name2 ? `${r.name2} ${r.surname2}` : '',
-    r.host === 'anahit' ? 'Հարսի' : 'Փեսայի',
+    getSideMeta(r.host)?.shortLabel ?? '',
     r.guests,
   ].map(esc).join(','))
   const csv = [headers.map(esc).join(','), ...lines].join('\r\n')

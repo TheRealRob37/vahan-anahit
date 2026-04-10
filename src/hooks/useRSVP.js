@@ -1,10 +1,18 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { config } from '../config/wedding'
+
+const {
+  rsvp: { defaultGuestCount, sides, tableName },
+  copy: {
+    rsvp: { errorMessage },
+  },
+} = config
 
 export function useRSVP() {
   const [attending, setAttending] = useState(null)
-  const [host, setHost]           = useState('anahit')
-  const [guests, setGuests]       = useState(2)
+  const [host, setHost]           = useState(sides[0]?.value ?? '')
+  const [guests, setGuests]       = useState(defaultGuestCount)
   const [name1, setName1]         = useState('')
   const [surname1, setSurname1]   = useState('')
   const [name2, setName2]         = useState('')
@@ -26,7 +34,7 @@ export function useRSVP() {
     setLoading(true)
     setError(null)
     try {
-      const { error: sbError } = await supabase.from('rsvp_responses').insert([{
+      const { error: sbError } = await supabase.from(tableName).insert([{
         attending,
         host,
         guests,
@@ -38,7 +46,7 @@ export function useRSVP() {
       if (sbError) throw sbError
       setSubmitted(true)
     } catch (err) {
-      setError('Մի բան սխալ է։ Խնդրում ենք կրկին փորձել։')
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

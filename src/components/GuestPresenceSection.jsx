@@ -1,4 +1,7 @@
 import FadeIn from './FadeIn'
+import { config } from '../config/wedding'
+
+const guestPresenceLines = config.copy.guestPresence.split('\n')
 
 export default function GuestPresenceSection() {
   return (
@@ -6,9 +9,12 @@ export default function GuestPresenceSection() {
       <div className="max-w-md mx-auto text-center">
         <FadeIn>
           <p className="font-armenian-sans text-stone-600 text-sm leading-relaxed">
-            Ձեր ներկայությունը մեզ համար
-            ամենաթանկ նվերն է,
-            որով այս օրը կդառնա առավել լուսավոր և հիշարժան։
+            {guestPresenceLines.map((line, index) => (
+              <span key={line}>
+                {line}
+                {index < guestPresenceLines.length - 1 && <br />}
+              </span>
+            ))}
           </p>
         </FadeIn>
       </div>

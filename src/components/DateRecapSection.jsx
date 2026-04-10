@@ -1,5 +1,8 @@
 import FadeIn from './FadeIn'
 import OrnamentDivider from './OrnamentDivider'
+import { config } from '../config/wedding'
+
+const { dateNote } = config.copy
 
 export default function DateRecapSection() {
   return (
@@ -8,11 +11,7 @@ export default function DateRecapSection() {
         <FadeIn>
           <OrnamentDivider />
           <p className="font-armenian-sans font-bold text-sm leading-relaxed" style={{ color: 'oklch(45% 0.1 60)' }}>
-            Երեկոն խոստանում է լինել լի ջերմությամբ,
-            գեղեցիկ երաժշտությամբ և տոնական տրամադրությամբ։
-            Քանի որ այն նախատեսված է մեծահասակների համար՝
-            ալկոհոլային հյուրասիրությամբ և ակտիվ երեկոյով,
-            սիրով խնդրում ենք այս հատուկ օրը կիսել մեզ հետ առանց երեխաների։
+            {dateNote}
           </p>
         </FadeIn>
       </div>

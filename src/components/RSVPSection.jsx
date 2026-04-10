@@ -3,8 +3,13 @@ import { motion } from 'framer-motion'
 import { useRSVP } from '../hooks/useRSVP'
 import FadeIn from './FadeIn'
 import SectionHeader from './SectionHeader'
+import { config } from '../config/wedding'
 
 const inputCls = 'w-full py-3 px-4 bg-white/70 border border-stone-200 rounded-xl text-sm text-stone-700 placeholder-stone-400 focus:outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-700/30 transition'
+const { rsvp: rsvpCopy, rsvpSection } = config.copy
+const sideOptions = config.rsvp.sides
+const guestOptions = Array.from({ length: config.rsvp.maxGuests }, (_, index) => index + 1)
+const deadlineNote = rsvpCopy.deadlineNote.replace('{deadline}', config.date.rsvpDeadline)
 
 const RSVPSection = memo(function RSVPSection() {
   const {
@@ -23,9 +28,9 @@ const RSVPSection = memo(function RSVPSection() {
     <section style={{ backgroundColor: '#faf7f4' }} className="px-6 py-14" aria-label="RSVP">
       <div className="max-w-md mx-auto">
         <FadeIn>
-          <SectionHeader label="Հաստատում" title="Հաստատել մասնակցությունը" />
+          <SectionHeader label={rsvpSection.label} title={rsvpSection.title} />
           <p className="text-sm text-stone-500 text-center mb-8 leading-relaxed">
-            Խնդրում ենք մինչև Ապրիլի 20-ը լրացնել՝ նշելով ձեր մասնակցությունը և հյուրերի քանակը։
+            {deadlineNote}
           </p>
         </FadeIn>
 
@@ -41,12 +46,12 @@ const RSVPSection = memo(function RSVPSection() {
             >
               <div className="text-5xl mb-4" aria-hidden="true">💌</div>
               <h3 className="font-armenian-serif text-2xl text-amber-900 mb-2">
-                {attending === 'yes' ? 'Շնորհակալություն!' : 'Ցավոք...'}
+                {attending === 'yes' ? rsvpCopy.successYesTitle : rsvpCopy.successNoTitle}
               </h3>
               <p className="text-stone-600 leading-relaxed">
                 {attending === 'yes'
-                  ? 'Շատ շնորհակալ ենք, ձեր հաստատումը ստացվել է: Մենք անհամբեր սպասում ենք ձեզ հետ միասին տոնելու մեր հատուկ օրը!'
-                  : 'Ձեր պատասխանը ստացվել է։ Շնորհակալ ենք, որ տեղեկացրիք մեզ։'}
+                  ? rsvpCopy.successYes
+                  : rsvpCopy.successNo}
               </p>
             </motion.div>
           ) : (
@@ -54,11 +59,11 @@ const RSVPSection = memo(function RSVPSection() {
 
               {/* Attending */}
               <fieldset>
-                <legend className="block text-sm text-stone-500 mb-2 ml-1">Կմասնակցե՞ք</legend>
+                <legend className="block text-sm text-stone-500 mb-2 ml-1">{rsvpCopy.attendingQuestion}</legend>
                 <div className="flex gap-3">
                   {[
-                    { val: 'yes', label: 'Իհարկե գալու եմ' },
-                    { val: 'no',  label: 'Ցավոք, չեմ կարող' },
+                    { val: 'yes', label: rsvpCopy.attendingYesLabel },
+                    { val: 'no', label: rsvpCopy.attendingNoLabel },
                   ].map(opt => (
                     <button
                       key={opt.val}
@@ -77,18 +82,15 @@ const RSVPSection = memo(function RSVPSection() {
 
               {/* Host side */}
               <fieldset>
-                <legend className="block text-sm text-stone-500 mb-2 ml-1">Դուք ում հյուրն եք</legend>
+                <legend className="block text-sm text-stone-500 mb-2 ml-1">{rsvpCopy.sideQuestion}</legend>
                 <div className="flex gap-2">
-                  {[
-                    { val: 'anahit', label: 'Հարսի հյուր' },
-                    { val: 'vahan',  label: 'Փեսայի հյուր' },
-                  ].map(opt => (
+                  {sideOptions.map(opt => (
                     <button
-                      key={opt.val}
+                      key={opt.value}
                       type="button"
-                      aria-pressed={host === opt.val}
-                      onClick={() => setHost(opt.val)}
-                      className={`flex-1 py-2 px-3 rounded-full border text-sm transition focus:outline-none focus:ring-2 focus:ring-amber-700/50 ${host === opt.val
+                      aria-pressed={host === opt.value}
+                      onClick={() => setHost(opt.value)}
+                      className={`flex-1 py-2 px-3 rounded-full border text-sm transition focus:outline-none focus:ring-2 focus:ring-amber-700/50 ${host === opt.value
                         ? 'bg-amber-800 text-white border-amber-800 shadow'
                         : 'bg-white/70 text-stone-600 border-stone-300 hover:border-amber-700'}`}
                     >
@@ -101,7 +103,7 @@ const RSVPSection = memo(function RSVPSection() {
               {/* Guest count */}
               <div>
                 <label htmlFor="guests-select" className="block text-sm text-stone-500 mb-1 ml-1">
-                  Հյուրերի քանակը
+                  {rsvpCopy.guestCountLabel}
                 </label>
                 <select
                   id="guests-select"
@@ -109,21 +111,22 @@ const RSVPSection = memo(function RSVPSection() {
                   onChange={e => setGuests(Number(e.target.value))}
                   className={`${inputCls} appearance-none cursor-pointer`}
                 >
-                  <option value={1}>1 հյուր</option>
-                  <option value={2}>2 հյուր</option>
+                  {guestOptions.map(count => (
+                    <option key={count} value={count}>{count} հյուր</option>
+                  ))}
                 </select>
               </div>
 
               {/* Guest 1 */}
               <fieldset>
-                <legend className="sr-only">Առաջին հյուրի տվյալները</legend>
+                <legend className="sr-only">{rsvpCopy.firstGuestLegend}</legend>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="name1" className="sr-only">Անուն</label>
+                    <label htmlFor="name1" className="sr-only">{rsvpCopy.firstNamePlaceholder}</label>
                     <input
                       id="name1"
                       type="text"
-                      placeholder="Անուն"
+                      placeholder={rsvpCopy.firstNamePlaceholder}
                       value={name1}
                       onChange={e => setName1(e.target.value)}
                       required
@@ -132,11 +135,11 @@ const RSVPSection = memo(function RSVPSection() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="surname1" className="sr-only">Ազգանուն</label>
+                    <label htmlFor="surname1" className="sr-only">{rsvpCopy.lastNamePlaceholder}</label>
                     <input
                       id="surname1"
                       type="text"
-                      placeholder="Ազգանուն"
+                      placeholder={rsvpCopy.lastNamePlaceholder}
                       value={surname1}
                       onChange={e => setSurname1(e.target.value)}
                       required
@@ -150,14 +153,14 @@ const RSVPSection = memo(function RSVPSection() {
               {/* Guest 2 */}
               {guests === 2 && (
                 <fieldset>
-                  <legend className="sr-only">Երկրորդ հյուրի տվյալները</legend>
+                  <legend className="sr-only">{rsvpCopy.secondGuestLegend}</legend>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label htmlFor="name2" className="sr-only">Անուն</label>
+                      <label htmlFor="name2" className="sr-only">{rsvpCopy.firstNamePlaceholder}</label>
                       <input
                         id="name2"
                         type="text"
-                        placeholder="Անուն"
+                        placeholder={rsvpCopy.firstNamePlaceholder}
                         value={name2}
                         onChange={e => setName2(e.target.value)}
                         required
@@ -165,11 +168,11 @@ const RSVPSection = memo(function RSVPSection() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="surname2" className="sr-only">Ազգանուն</label>
+                      <label htmlFor="surname2" className="sr-only">{rsvpCopy.lastNamePlaceholder}</label>
                       <input
                         id="surname2"
                         type="text"
-                        placeholder="Ազգանուն"
+                        placeholder={rsvpCopy.lastNamePlaceholder}
                         value={surname2}
                         onChange={e => setSurname2(e.target.value)}
                         required
@@ -196,7 +199,7 @@ const RSVPSection = memo(function RSVPSection() {
                 whileTap={isValid() && !loading ? { scale: 0.98 } : {}}
                 className={`w-full py-4 text-white font-armenian-serif text-base tracking-wide rounded-full shadow-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-amber-700/60 focus:ring-offset-2 ${!isValid() || loading ? 'bg-amber-800/40 cursor-not-allowed' : 'bg-amber-800 hover:bg-amber-900'}`}
               >
-                {loading ? 'Ուղարկվում է...' : 'Հաստատել'}
+                {loading ? rsvpCopy.sendingLabel : rsvpCopy.submitLabel}
               </motion.button>
             </form>
           )}

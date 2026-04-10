@@ -1,13 +1,18 @@
 import { motion } from 'framer-motion'
 import FadeIn from './FadeIn'
+import { config } from '../config/wedding'
+
+const thankYouImage = `${import.meta.env.BASE_URL}${config.assets.thankYouImage}`
+const thankYouAlt = config.assets.thankYouAlt
+const thankYouTitle = config.copy.thankYou.title
 
 export default function ThankYouSection() {
   return (
     <div className="relative overflow-hidden" style={{ height: 'clamp(320px, 70vh, 90vh)' }}>
       {/* Mobile: photo */}
       <motion.img
-        src={`${import.meta.env.BASE_URL}thankYou.jpg`}
-        alt="Վահան և Անահիտ"
+        src={thankYouImage}
+        alt={thankYouAlt}
         loading="lazy"
         decoding="async"
         className="md:hidden w-full h-full object-cover object-top"
@@ -46,7 +51,7 @@ export default function ThankYouSection() {
               color: 'rgba(255,255,255,0.25)',
             }}
           >
-            Thank You
+            {thankYouTitle}
           </p>
         </FadeIn>
       </div>
