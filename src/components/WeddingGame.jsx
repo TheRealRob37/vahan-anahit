@@ -82,8 +82,24 @@ export default function WeddingGame({ onGameOver }) {
       // ФИX #3: Разблокировка аудио при первом касании.
       // iOS/Android запрещают AudioContext без жеста пользователя.
       // touchstart — первый жест, с которым игрок взаимодействует.
-      const unlockAudio = () => { try { getAudioCtx() } catch {} }
-      container.addEventListener('touchstart', unlockAudio, { once: true, passive: true })
+const unlockAudio = () => {
+  try {
+    const ctx = getAudioCtx()
+
+    // создаём тихий короткий звук (иначе iOS не разблокирует)
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime)
+
+    osc.start()
+    osc.stop(ctx.currentTime + 0.01)
+  } catch {}
+}      
+container.addEventListener('touchstart', unlockAudio, { once: true, passive: true })
 
       function playTone(freq, type, duration, vol = 0.18, fadeOut = true) {
         try {
