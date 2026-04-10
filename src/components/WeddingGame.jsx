@@ -24,7 +24,7 @@ const RING_TYPES = {
 // ── power-up types ─────────────────────────────────────────────────────────
 // duration: 0 = instant (heart)
 const POWERUP_TYPES = {
-  magnet: { emoji: '🧲', color: 0xaa44ff, duration: 6000, weight: 0.12 },
+  magnet: { emoji: '🧲', color: 0xaa44ff, duration: 10000, weight: 0.12 },
   slow:   { emoji: '⏳', color: 0x44ccff, duration: 5000, weight: 0.12 },
   double: { emoji: '×2', color: 0xffdd00, duration: 7000, weight: 0.10 },
   heart:  { emoji: '❤️', color: 0xff4466, duration: 0,    weight: 0.08 },
@@ -54,7 +54,7 @@ const FLOWER_POINTS      = 5000
 const COMBO_FLOWER_BURST = 50
 const FLOWER_BURST_COUNT = 15
 const MAX_PARTICLES      = 80
-const MAGNET_FORCE       = 8   // max pixels/frame attraction at pillow center
+const MAGNET_FORCE       = 40   // max pixels/frame attraction at pillow center
 
 export default function WeddingGame({ onGameOver }) {
   const containerRef = useRef(null)
@@ -86,7 +86,6 @@ export default function WeddingGame({ onGameOver }) {
         return audioCtx
       }
       const unlockAudio = () => { try { getAudioCtx() } catch {} }
-      container.addEventListener('touchstart', unlockAudio, { once: true, passive: true })
 
       function playTone(freq, type, duration, vol = 0.18) {
         try {
@@ -584,7 +583,7 @@ export default function WeddingGame({ onGameOver }) {
 
       // ── touch controls ────────────────────────────────────────────────────
       let lastTouchX=null
-      const onTouchStart=e=>{ lastTouchX=e.touches[0].clientX }
+      const onTouchStart=e=>{ unlockAudio(); lastTouchX=e.touches[0].clientX }
       const onTouchMove=e=>{
         if (lastTouchX===null) return
         const dx=e.touches[0].clientX-lastTouchX
@@ -599,7 +598,6 @@ export default function WeddingGame({ onGameOver }) {
 
       app._cleanupExtras = () => {
         window.removeEventListener('resize', onResize)
-        container.removeEventListener('touchstart', unlockAudio)
         app.canvas.removeEventListener('touchstart', onTouchStart)
         app.canvas.removeEventListener('touchmove',  onTouchMove)
         app.canvas.removeEventListener('touchend',   onTouchEnd)
