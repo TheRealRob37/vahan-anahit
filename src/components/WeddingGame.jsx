@@ -73,53 +73,95 @@ export default function WeddingGame({ onGameOver }) {
       // ФИX #2: AudioContext создаётся один раз и переиспользуется.
       // Раньше создавался новый контекст на каждый звук → браузер выдавал ошибку
       // "AudioContext limit exceeded" (особенно на iOS Safari).
-      let audioCtx = null
-      function getAudioCtx() {
-        if (!audioCtx || audioCtx.state === 'closed') audioCtx = new AudioContext()
-        if (audioCtx.state === 'suspended') audioCtx.resume()
-        return audioCtx
-      }
+      // Replaced by the unified audio block below.
       // ФИX #3: Разблокировка аудио при первом касании.
       // iOS/Android запрещают AudioContext без жеста пользователя.
       // touchstart — первый жест, с которым игрок взаимодействует.
+// ── AUDIO (iOS FIXED) ───────────────────────────────────────────
+
+let audioCtx = null
+let audioUnlocked = false
+
+function getAudioCtx() {
+  return audioCtx
+}
+
+// 🔓 разблокировка ТОЛЬКО через user gesture
 const unlockAudio = () => {
+  if (audioUnlocked) return
+
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+
+    const osc = audioCtx.createOscillator()
+    const gain = audioCtx.createGain()
+
+    osc.connect(gain)
+    gain.connect(audioCtx.destination)
+
+    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime)
+
+    osc.start()
+    osc.stop(audioCtx.currentTime + 0.01)
+
+    audioUnlocked = true
+  } catch (e) {}
+}
+
+// важно: iOS лучше реагирует и на touch, и на click
+container.addEventListener('touchstart', unlockAudio, { once: true })
+container.addEventListener('click', unlockAudio, { once: true })
+
+// ── SOUND ENGINE ─────────────────────────────────────────────────
+
+function playTone(freq, type, duration, vol = 0.18, fadeOut = true) {
   try {
     const ctx = getAudioCtx()
+    if (!ctx || !audioUnlocked) return
 
-    // создаём тихий короткий звук (иначе iOS не разблокирует)
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
 
     osc.connect(gain)
     gain.connect(ctx.destination)
 
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime)
+    osc.type = type
+    osc.frequency.value = freq
+
+    gain.gain.setValueAtTime(vol, ctx.currentTime)
+
+    if (fadeOut) {
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        ctx.currentTime + duration
+      )
+    }
 
     osc.start()
-    osc.stop(ctx.currentTime + 0.01)
-  } catch {}
-}      
-container.addEventListener('touchstart', unlockAudio, { once: true, passive: true })
+    osc.stop(ctx.currentTime + duration)
+  } catch (e) {}
+}
 
-      function playTone(freq, type, duration, vol = 0.18, fadeOut = true) {
-        try {
-          const ctx = getAudioCtx()
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-          osc.connect(gain); gain.connect(ctx.destination)
-          osc.type = type; osc.frequency.value = freq
-          gain.gain.setValueAtTime(vol, ctx.currentTime)
-          if (fadeOut) gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
-          osc.start(); osc.stop(ctx.currentTime + duration)
-        } catch {}
-      }
-      const sfxCatch  = () => { playTone(880, 'sine', 0.12, 0.15); playTone(1200, 'sine', 0.08, 0.1) }
-      const sfxMiss   = () => { playTone(220, 'sawtooth', 0.18, 0.12) }
-      const sfxFlower = () => {
-        [523, 659, 784, 1047].forEach((f, i) =>
-          setTimeout(() => playTone(f, 'sine', 0.18, 0.2), i * 60)
-        )
-      }
+// ── SFX ──────────────────────────────────────────────────────────
+
+const sfxCatch = () => {
+  playTone(880, 'sine', 0.12, 0.15)
+  playTone(1200, 'sine', 0.08, 0.1)
+}
+
+const sfxMiss = () => {
+  playTone(220, 'sawtooth', 0.18, 0.12)
+}
+
+const sfxFlower = () => {
+  const notes = [523, 659, 784, 1047]
+
+  notes.forEach((f, i) => {
+    setTimeout(() => {
+      playTone(f, 'sine', 0.18, 0.2)
+    }, i * 60)
+  })
+}
 
       app = new Application()
       await app.init({
