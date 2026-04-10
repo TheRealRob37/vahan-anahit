@@ -81,10 +81,10 @@ export default function GamePage() {
         .order('score', { ascending: false })
         .limit(200)
       setLeaderboard(bestPerPlayer(data || [], 10))
-      // rank = number of unique players with a better best score
+      // rank = how many unique players have a best score strictly better than this game's score
       const top = bestPerPlayer(data || [])
-      const rank = top.findIndex(r => r.player_name === playerName)
-      setMyRank(rank >= 0 ? rank + 1 : top.length + 1)
+      const rank = top.filter(r => r.player_name !== playerName && r.score > score).length + 1
+      setMyRank(rank)
     } catch (err) {
       console.error('Leaderboard error:', err)
     } finally {
@@ -299,7 +299,7 @@ export default function GamePage() {
                   ) : (
                     <ol className="space-y-1">
                       {leaderboard.map((row, i) => {
-                        const isMe = row.player_name === playerName && row.score === finalScore
+                        const isMe = row.player_name === playerName
                         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
                         return (
                           <li key={i} className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5" style={{
