@@ -44,7 +44,7 @@ const FooterSection = memo(function FooterSection() {
         ) : (
           <div className="mt-8 flex flex-col items-center gap-3">
             <p className="font-armenian-sans text-xs" style={{ color: 'rgba(253,230,138,0.6)' }}>
-              Դե եթե սեղմեցիր, արի խաղանք
+              Դե, եթե սեղմեցիր, արի խաղանք
             </p>
             <button
               onClick={() => navigate('/game')}

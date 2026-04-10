@@ -16,36 +16,45 @@ const FLOWER_LIGHT = 0xffccee
 
 // ── ring types ─────────────────────────────────────────────────────────────
 const RING_TYPES = {
-  gold:    { color: GOLD,   shine: GOLD_LIGHT,   points: 10, glowColor: 0xffcc44, label: null, weight: 6 },
-  silver:  { color: SILVER, shine: SILVER_LIGHT,  points: 15, glowColor: 0xaaddff, label: '✦',  weight: 3 },
-  diamond: { color: DIAMOND,shine: DIAMOND_LIGHT, points: 30, glowColor: 0x88eeff, label: '◆',  weight: 1 },
+  gold:    { color: GOLD,    shine: GOLD_LIGHT,    points: 10, glowColor: 0xffcc44, label: null, weight: 6 },
+  silver:  { color: SILVER,  shine: SILVER_LIGHT,  points: 15, glowColor: 0xaaddff, label: '✦',  weight: 3 },
+  diamond: { color: DIAMOND, shine: DIAMOND_LIGHT, points: 30, glowColor: 0x88eeff, label: '◆',  weight: 1 },
 }
 
-// ── constants ─────────────────────────────────────────────────────────────
+// ── power-up types ─────────────────────────────────────────────────────────
+// duration: 0 = instant (heart)
+const POWERUP_TYPES = {
+  magnet: { emoji: '🧲', color: 0xaa44ff, duration: 6000, weight: 0.12 },
+  slow:   { emoji: '⏳', color: 0x44ccff, duration: 5000, weight: 0.12 },
+  double: { emoji: '×2', color: 0xffdd00, duration: 7000, weight: 0.10 },
+  heart:  { emoji: '❤️', color: 0xff4466, duration: 0,    weight: 0.08 },
+}
+
+// ── spawn tables ───────────────────────────────────────────────────────────
+const RING_SPAWN    = Object.entries(RING_TYPES).map(([subtype, t]) => ({ type: 'ring', subtype, weight: t.weight }))
+const FLOWER_SPAWN  = [{ type: 'flower', subtype: 'flower', weight: 0.1 }]
+const POWERUP_SPAWN = Object.entries(POWERUP_TYPES).map(([subtype, t]) => ({ type: 'powerup', subtype, weight: t.weight }))
+const POWERUP_COOLDOWN = 9000  // ms between power-up spawns
+
+function pickEntityType(canSpawnPowerup) {
+  const table = [...RING_SPAWN, ...FLOWER_SPAWN, ...(canSpawnPowerup ? POWERUP_SPAWN : [])]
+  const total  = table.reduce((s, e) => s + e.weight, 0)
+  let r = Math.random() * total
+  for (const entry of table) { r -= entry.weight; if (r <= 0) return entry }
+  return RING_SPAWN[0]
+}
+
+// ── game constants ─────────────────────────────────────────────────────────
 const LIVES_MAX          = 3
 const SPAWN_START        = 1200
 const SPAWN_MIN          = 450
 const SPEED_START        = 2.0
 const SPEED_MAX          = 6.0
 const FLOWER_POINTS      = 5000
-const FLOWER_WEIGHT      = 0.1
 const COMBO_FLOWER_BURST = 50
 const FLOWER_BURST_COUNT = 15
-// ФИX #1: Жёсткий лимит частиц — никогда не превышаем.
-// Без этого на мобиле создавались сотни объектов в секунду → лаги.
 const MAX_PARTICLES      = 80
-
-function pickRingType() {
-  const total = Object.values(RING_TYPES).reduce((s, t) => s + t.weight, 0) + FLOWER_WEIGHT
-  let r = Math.random() * total
-  if (r < FLOWER_WEIGHT) return 'flower'
-  r -= FLOWER_WEIGHT
-  for (const [name, t] of Object.entries(RING_TYPES)) {
-    r -= t.weight
-    if (r <= 0) return name
-  }
-  return 'gold'
-}
+const MAGNET_FORCE       = 8   // max pixels/frame attraction at pillow center
 
 export default function WeddingGame({ onGameOver }) {
   const containerRef = useRef(null)
@@ -69,108 +78,39 @@ export default function WeddingGame({ onGameOver }) {
       const { GlowFilter, DropShadowFilter } = await import('pixi-filters')
       if (destroyed) return
 
-      // ── аудио ────────────────────────────────────────────────────────────
-      // ФИX #2: AudioContext создаётся один раз и переиспользуется.
-      // Раньше создавался новый контекст на каждый звук → браузер выдавал ошибку
-      // "AudioContext limit exceeded" (особенно на iOS Safari).
-      // Replaced by the unified audio block below.
-      // ФИX #3: Разблокировка аудио при первом касании.
-      // iOS/Android запрещают AudioContext без жеста пользователя.
-      // touchstart — первый жест, с которым игрок взаимодействует.
-// ── AUDIO (iOS FIXED) ───────────────────────────────────────────
+      // ── audio ─────────────────────────────────────────────────────────────
+      let audioCtx = null
+      function getAudioCtx() {
+        if (!audioCtx || audioCtx.state === 'closed') audioCtx = new AudioContext()
+        if (audioCtx.state === 'suspended') audioCtx.resume()
+        return audioCtx
+      }
+      const unlockAudio = () => { try { getAudioCtx() } catch {} }
+      container.addEventListener('touchstart', unlockAudio, { once: true, passive: true })
 
-let audioCtx = null
-let audioUnlocked = false
+      function playTone(freq, type, duration, vol = 0.18) {
+        try {
+          const ctx  = getAudioCtx()
+          const osc  = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.connect(gain); gain.connect(ctx.destination)
+          osc.type = type; osc.frequency.value = freq
+          gain.gain.setValueAtTime(vol, ctx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
+          osc.start(); osc.stop(ctx.currentTime + duration)
+        } catch {}
+      }
+      const sfxCatch   = () => { playTone(880,'sine',0.12,0.15); playTone(1200,'sine',0.08,0.1) }
+      const sfxMiss    = () => { playTone(220,'sawtooth',0.18,0.12) }
+      const sfxFlower  = () => { [523,659,784,1047].forEach((f,i) => setTimeout(()=>playTone(f,'sine',0.18,0.2),i*60)) }
+      const sfxPowerup = () => { [500,700,1000].forEach((f,i) => setTimeout(()=>playTone(f,'sine',0.12,0.22),i*55)) }
 
-function getAudioCtx() {
-  return audioCtx
-}
-
-// 🔓 разблокировка ТОЛЬКО через user gesture
-const unlockAudio = () => {
-  if (audioUnlocked) return
-
-  try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-
-    const osc = audioCtx.createOscillator()
-    const gain = audioCtx.createGain()
-
-    osc.connect(gain)
-    gain.connect(audioCtx.destination)
-
-    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime)
-
-    osc.start()
-    osc.stop(audioCtx.currentTime + 0.01)
-
-    audioUnlocked = true
-  } catch (e) {}
-}
-
-// важно: iOS лучше реагирует и на touch, и на click
-container.addEventListener('touchstart', unlockAudio, { once: true })
-container.addEventListener('click', unlockAudio, { once: true })
-
-// ── SOUND ENGINE ─────────────────────────────────────────────────
-
-function playTone(freq, type, duration, vol = 0.18, fadeOut = true) {
-  try {
-    const ctx = getAudioCtx()
-    if (!ctx || !audioUnlocked) return
-
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-
-    osc.type = type
-    osc.frequency.value = freq
-
-    gain.gain.setValueAtTime(vol, ctx.currentTime)
-
-    if (fadeOut) {
-      gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        ctx.currentTime + duration
-      )
-    }
-
-    osc.start()
-    osc.stop(ctx.currentTime + duration)
-  } catch (e) {}
-}
-
-// ── SFX ──────────────────────────────────────────────────────────
-
-const sfxCatch = () => {
-  playTone(880, 'sine', 0.12, 0.15)
-  playTone(1200, 'sine', 0.08, 0.1)
-}
-
-const sfxMiss = () => {
-  playTone(220, 'sawtooth', 0.18, 0.12)
-}
-
-const sfxFlower = () => {
-  const notes = [523, 659, 784, 1047]
-
-  notes.forEach((f, i) => {
-    setTimeout(() => {
-      playTone(f, 'sine', 0.18, 0.2)
-    }, i * 60)
-  })
-}
-
+      // ── app init ──────────────────────────────────────────────────────────
       app = new Application()
       await app.init({
-        width:           container.clientWidth,
-        height:          container.clientHeight,
-        backgroundColor: BG,
-        antialias:       true,
-        resolution:      Math.min(window.devicePixelRatio || 1, 2),
-        autoDensity:     true,
+        width: container.clientWidth, height: container.clientHeight,
+        backgroundColor: BG, antialias: true,
+        resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true,
       })
       if (destroyed) { app.destroy(true); return }
 
@@ -178,7 +118,10 @@ const sfxFlower = () => {
       const W = app.screen.width
       const H = app.screen.height
 
-      // ── responsive scaling ───────────────────────────────────────────────
+      const onResize = () => app.renderer.resize(container.clientWidth, container.clientHeight)
+      window.addEventListener('resize', onResize)
+
+      // ── responsive scaling ────────────────────────────────────────────────
       const scale        = Math.min(1, W / 390)
       const PILLOW_W     = Math.round(110 * scale + 30)
       const PILLOW_H     = Math.round(22 * scale + 6)
@@ -186,520 +129,481 @@ const sfxFlower = () => {
       const RING_OUTER   = Math.round(14 * scale + 8)
       const RING_INNER   = Math.round(RING_OUTER * 0.55)
       const FLOWER_R     = Math.round(RING_OUTER * 1.1)
+      const PU_R         = Math.round(RING_OUTER * 1.25)
+      const MAGNET_RADIUS= W * 0.44
 
-      const onResize = () => app.renderer.resize(container.clientWidth, container.clientHeight)
-      window.addEventListener('resize', onResize)
-
-      // ── helpers ──────────────────────────────────────────────────────────
+      // ── helpers ───────────────────────────────────────────────────────────
       function makeText(text, style) {
         return new Text({ text, style: { fontFamily: "'Noto Serif Armenian', Georgia, serif", ...style } })
       }
 
-      // ── ФИX #4: Единый менеджер частиц ───────────────────────────────────
-      // Раньше каждая частица (trail, sparkle) добавляла свой отдельный тикер
-      // через app.ticker.add(). При 20 кольцах на экране → 400+ вызовов тикера
-      // в секунду. Теперь ОДИН массив + ОДИН тикер обходит все частицы.
-      // Это в 10–20 раз меньше нагрузки на JS движок мобила.
-      const particles = []  // { gfx, life, vx, vy, type: 'trail'|'sparkle' }
+      // ── particle system — one array, one ticker ───────────────────────────
+      const particles = []
 
       function spawnTrail(x, y, color) {
-        // ФИX #5: Пропускаем спавн если лимит достигнут
         if (particles.length >= MAX_PARTICLES) return
         const sp = new Graphics()
         sp.circle(0, 0, Math.random() * 2 + 0.5)
         sp.fill({ color, alpha: 0.7 })
-        sp.x = x + (Math.random() - 0.5) * RING_OUTER * 1.2
-        sp.y = y
+        sp.x = x + (Math.random() - 0.5) * RING_OUTER * 1.2; sp.y = y
         app.stage.addChildAt(sp, 2)
         particles.push({ gfx: sp, life: 0.8, vx: 0, vy: 0.5, type: 'trail' })
       }
 
       function spawnSparkles(x, y, color = GOLD) {
-        // ФИX #6: Убрали GlowFilter с каждой частицы.
-        // Раньше: 35 sparkles × new GlowFilter() = 35 WebGL шейдерных программ
-        // за одно касание цветка. При бурсте 15 цветков = 525 шейдеров → GPU умирал.
-        // Теперь: просто цветные кружки и ромбики — выглядят так же, не убивают GPU.
-        const maxNew = MAX_PARTICLES - particles.length
-        const want   = color === FLOWER_PINK ? 20 : 12
-        const count  = Math.min(want, maxNew)
+        const count = Math.min(color === FLOWER_PINK ? 20 : 12, MAX_PARTICLES - particles.length)
         for (let i = 0; i < count; i++) {
-          const sp = new Graphics()
-          const r = Math.random() * 4 + 1
+          const sp = new Graphics(); const r = Math.random() * 4 + 1
           if (Math.random() > 0.5) {
-            sp.poly([0, -r * 1.2, r, 0, 0, r * 1.2, -r, 0])
-            sp.fill({ color: Math.random() > 0.5 ? color : GOLD_LIGHT })
+            sp.poly([0,-r*1.2, r,0, 0,r*1.2, -r,0]); sp.fill({ color: Math.random()>0.5 ? color : GOLD_LIGHT })
           } else {
-            sp.circle(0, 0, r)
-            sp.fill({ color: Math.random() > 0.5 ? color : WHITE, alpha: 0.9 })
+            sp.circle(0,0,r); sp.fill({ color: Math.random()>0.5 ? color : WHITE, alpha: 0.9 })
           }
-          sp.x = x + (Math.random() - 0.5) * PILLOW_W * 0.9
-          sp.y = y + (Math.random() - 0.5) * PILLOW_H
-          const angle = Math.random() * Math.PI * 2
-          const speed = Math.random() * 5 + 2
+          sp.x = x + (Math.random()-0.5)*PILLOW_W*0.9; sp.y = y + (Math.random()-0.5)*PILLOW_H
+          const angle = Math.random()*Math.PI*2; const speed = Math.random()*5+2
           app.stage.addChild(sp)
-          particles.push({
-            gfx: sp,
-            life: 1,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed - 3,
-            type: 'sparkle',
-          })
+          particles.push({ gfx: sp, life: 1, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed-3, type: 'sparkle' })
         }
       }
 
-      // ── background ───────────────────────────────────────────────────────
+      // ── background ────────────────────────────────────────────────────────
       const bgGlow = new Graphics()
-      bgGlow.ellipse(W / 2, H + 80, W * 0.7, 220)
-      bgGlow.fill({ color: 0x3a1a00, alpha: 0.6 })
-      bgGlow.filters = [new BlurFilter({ strength: 60 })]
-      app.stage.addChild(bgGlow)
+      bgGlow.ellipse(W/2, H+80, W*0.7, 220); bgGlow.fill({ color: 0x3a1a00, alpha: 0.6 })
+      bgGlow.filters = [new BlurFilter({ strength: 60 })]; app.stage.addChild(bgGlow)
 
       const starGfx = new Graphics()
       for (let i = 0; i < 120; i++) {
-        const x    = Math.random() * W
-        const y    = Math.random() * H * 0.85
-        const r    = Math.random() * 1.2 + 0.2
-        const gold = Math.random() > 0.7
-        starGfx.circle(x, y, r)
-        starGfx.fill({ color: gold ? GOLD_LIGHT : WHITE, alpha: Math.random() * 0.55 + 0.1 })
+        starGfx.circle(Math.random()*W, Math.random()*H*0.85, Math.random()*1.2+0.2)
+        starGfx.fill({ color: Math.random()>0.7 ? GOLD_LIGHT : WHITE, alpha: Math.random()*0.55+0.1 })
       }
       app.stage.addChild(starGfx)
 
       const twinkleStars = []
       for (let i = 0; i < 18; i++) {
         const s = new Graphics()
-        s.circle(0, 0, Math.random() * 1.4 + 0.5)
-        s.fill({ color: Math.random() > 0.5 ? GOLD_LIGHT : WHITE })
-        s.x = Math.random() * W
-        s.y = Math.random() * H * 0.8
-        s.alpha = Math.random()
-        s._phase = Math.random() * Math.PI * 2
-        s._speed = 0.02 + Math.random() * 0.03
-        app.stage.addChild(s)
-        twinkleStars.push(s)
+        s.circle(0, 0, Math.random()*1.4+0.5); s.fill({ color: Math.random()>0.5 ? GOLD_LIGHT : WHITE })
+        s.x = Math.random()*W; s.y = Math.random()*H*0.8
+        s.alpha = Math.random(); s._phase = Math.random()*Math.PI*2; s._speed = 0.02+Math.random()*0.03
+        app.stage.addChild(s); twinkleStars.push(s)
       }
 
       const floorGlow = new Graphics()
-      floorGlow.ellipse(W / 2, H - 30, W * 0.75, 60)
-      floorGlow.fill({ color: GOLD, alpha: 0.06 })
-      floorGlow.filters = [new BlurFilter({ strength: 20 })]
-      app.stage.addChild(floorGlow)
+      floorGlow.ellipse(W/2, H-30, W*0.75, 60); floorGlow.fill({ color: GOLD, alpha: 0.06 })
+      floorGlow.filters = [new BlurFilter({ strength: 20 })]; app.stage.addChild(floorGlow)
 
-      // ── HUD ──────────────────────────────────────────────────────────────
+      // ── HUD: score + hearts + title + combo ───────────────────────────────
       const scoreLbl = makeText('0', { fontSize: 28, fill: WHITE, fontWeight: 'bold' })
       scoreLbl.x = 20; scoreLbl.y = 14
       scoreLbl.filters = [new GlowFilter({ distance: 8, outerStrength: 1.2, color: GOLD })]
       app.stage.addChild(scoreLbl)
 
-      const HEART_SIZE = 14
-      const HEART_GAP  = 22
+      const HEART_SIZE = 14; const HEART_GAP = 22
       const heartGfxList = Array.from({ length: LIVES_MAX }, (_, i) => {
         const h = new Graphics()
-        h.x = W - 16 - (LIVES_MAX - 1 - i) * HEART_GAP
-        h.y = 22
-        app.stage.addChild(h)
-        return h
+        h.x = W - 16 - (LIVES_MAX-1-i)*HEART_GAP; h.y = 22; app.stage.addChild(h); return h
       })
 
-      // ФИX #7: Перерисовываем сердца только когда lives изменились.
-      // Раньше drawHearts() вызывался каждый кадр через updateHUD() — лишняя работа.
       let lastDrawnLives = -1
       function drawHearts() {
         if (lives === lastDrawnLives) return
         lastDrawnLives = lives
         heartGfxList.forEach((h, i) => {
-          h.clear()
-          const full = i < lives
-          const s = HEART_SIZE
-          h.circle(-s * 0.25, -s * 0.15, s * 0.38)
-          h.fill({ color: ROSE, alpha: full ? 1 : 0.2 })
-          h.circle( s * 0.25, -s * 0.15, s * 0.38)
-          h.fill({ color: ROSE, alpha: full ? 1 : 0.2 })
-          h.poly([-s * 0.62, s * 0.1, s * 0.62, s * 0.1, 0, s * 0.72])
-          h.fill({ color: ROSE, alpha: full ? 1 : 0.2 })
+          h.clear(); const full = i < lives; const s = HEART_SIZE
+          h.circle(-s*0.25,-s*0.15,s*0.38); h.fill({ color: ROSE, alpha: full?1:0.2 })
+          h.circle( s*0.25,-s*0.15,s*0.38); h.fill({ color: ROSE, alpha: full?1:0.2 })
+          h.poly([-s*0.62,s*0.1, s*0.62,s*0.1, 0,s*0.72]); h.fill({ color: ROSE, alpha: full?1:0.2 })
         })
       }
 
-      const titleTxt = makeText('Բռնիր Մատանիները', { fontSize: 13, fill: GOLD_LIGHT, alpha: 0.5 })
-      titleTxt.anchor.set(0.5, 0)
-      titleTxt.x = W / 2; titleTxt.y = 9
-      app.stage.addChild(titleTxt)
+      const titleTxt = makeText('Բռնիր մատանիները', { fontSize: 13, fill: GOLD_LIGHT, alpha: 0.5 })
+      titleTxt.anchor.set(0.5,0); titleTxt.x = W/2; titleTxt.y = 9; app.stage.addChild(titleTxt)
 
       const comboLbl = makeText('', { fontSize: 15, fill: GOLD_LIGHT, fontWeight: 'bold' })
-      comboLbl.anchor.set(0.5, 0)
-      comboLbl.x = W / 2; comboLbl.y = 32
-      comboLbl.alpha = 0
-      app.stage.addChild(comboLbl)
+      comboLbl.anchor.set(0.5,0); comboLbl.x = W/2; comboLbl.y = 32; comboLbl.alpha = 0; app.stage.addChild(comboLbl)
 
-      // ── pillow ───────────────────────────────────────────────────────────
+      // ── effect HUD ────────────────────────────────────────────────────────
+      // 3 badges (magnet/slow/double) centered below combo.
+      // Heart is instant — no bar needed.
+      // Key trick: progress bar uses scale.x only — zero redraw, zero GPU work.
+      const HUD_KEYS  = ['magnet', 'slow', 'double']
+      const BAR_W     = 22
+      const effectHUD = {}
+
+      HUD_KEYS.forEach((key, i) => {
+        const cfg  = POWERUP_TYPES[key]
+        const cont = new Container()
+        cont.x = W/2 + (i-1)*54; cont.y = 56; cont.alpha = 0
+
+        const bg = new Graphics()
+        bg.roundRect(-24,-11,48,22,6); bg.fill({ color: cfg.color, alpha: 0.15 })
+        bg.roundRect(-24,-11,48,22,6); bg.stroke({ color: cfg.color, width: 1, alpha: 0.5 })
+        cont.addChild(bg)
+
+        const icon = makeText(cfg.emoji, { fontSize: 13 })
+        icon.anchor.set(0.5); icon.x = -12; icon.y = 0; cont.addChild(icon)
+
+        const track = new Graphics()
+        track.roundRect(0,-3,BAR_W,6,3); track.fill({ color: 0x222222, alpha: 0.5 }); cont.addChild(track)
+
+        const fill = new Graphics()
+        fill.roundRect(0,-3,BAR_W,6,3); fill.fill({ color: cfg.color }); cont.addChild(fill)
+
+        app.stage.addChild(cont)
+        effectHUD[key] = { cont, fill }
+      })
+
+      // ── pillow ────────────────────────────────────────────────────────────
       const pillowContainer = new Container()
       const pillow = new Graphics()
-      pillowContainer.addChild(pillow)
-      pillowContainer.x = W / 2
-      pillowContainer.y = H - 52
+      pillowContainer.addChild(pillow); pillowContainer.x = W/2; pillowContainer.y = H-52
       app.stage.addChild(pillowContainer)
 
       const pillowGlow = new Graphics()
-      pillowGlow.ellipse(0, 4, PILLOW_W * 0.6, 12)
-      pillowGlow.fill({ color: GOLD, alpha: 0.18 })
-      pillowGlow.filters = [new BlurFilter({ strength: 10 })]
-      pillowContainer.addChildAt(pillowGlow, 0)
+      pillowGlow.ellipse(0,4,PILLOW_W*0.6,12); pillowGlow.fill({ color: GOLD, alpha: 0.18 })
+      pillowGlow.filters = [new BlurFilter({ strength: 10 })]; pillowContainer.addChildAt(pillowGlow,0)
 
-      function drawPillow(squishY = 1, squishX = 1, flashColor = null) {
+      function drawPillow(squishY=1, squishX=1, flashColor=null) {
         pillow.clear()
-        const pw = PILLOW_W * squishX
-        const ph = PILLOW_H * squishY
-        pillow.roundRect(-pw / 2 + 4, -ph / 2 + 5, pw - 8, ph, 12)
-        pillow.fill({ color: 0x000000, alpha: 0.3 })
-        const bodyColor = flashColor ?? CREAM
-        pillow.roundRect(-pw / 2, -ph / 2, pw, ph, 12)
-        pillow.fill({ color: bodyColor })
-        pillow.roundRect(-pw / 2 + 6, -ph / 2 + 4, pw - 12, ph / 2 - 4, 8)
-        pillow.fill({ color: WHITE, alpha: 0.22 })
-        pillow.roundRect(-pw / 2 + 4, -ph / 2 + 3, pw - 8, ph - 6, 9)
-        pillow.stroke({ color: GOLD, width: 1.4, alpha: 0.55 })
-        pillow.poly([0, -6 * squishY, 6, 0, 0, 6 * squishY, -6, 0])
-        pillow.fill({ color: GOLD })
-        pillow.poly([0, -6 * squishY, 6, 0, 0, 6 * squishY, -6, 0])
-        pillow.stroke({ color: GOLD_LIGHT, width: 1, alpha: 0.8 })
+        const pw=PILLOW_W*squishX; const ph=PILLOW_H*squishY
+        pillow.roundRect(-pw/2+4,-ph/2+5,pw-8,ph,12); pillow.fill({ color:0x000000,alpha:0.3 })
+        pillow.roundRect(-pw/2,-ph/2,pw,ph,12); pillow.fill({ color: flashColor??CREAM })
+        pillow.roundRect(-pw/2+6,-ph/2+4,pw-12,ph/2-4,8); pillow.fill({ color:WHITE,alpha:0.22 })
+        pillow.roundRect(-pw/2+4,-ph/2+3,pw-8,ph-6,9); pillow.stroke({ color:GOLD,width:1.4,alpha:0.55 })
+        pillow.poly([0,-6*squishY,6,0,0,6*squishY,-6,0]); pillow.fill({ color:GOLD })
+        pillow.poly([0,-6*squishY,6,0,0,6*squishY,-6,0]); pillow.stroke({ color:GOLD_LIGHT,width:1,alpha:0.8 })
       }
       drawPillow()
-      pillow.filters = [new DropShadowFilter({ offset: { x: 0, y: 4 }, blur: 8, alpha: 0.4, color: 0x000000 })]
+      pillow.filters = [new DropShadowFilter({ offset:{x:0,y:4},blur:8,alpha:0.4,color:0x000000 })]
 
-      // ФИX #8: Флаги анимации подушки — предотвращают наложение тикеров.
-      // Раньше быстрый поймыш нескольких колец запускал несколько одновременных
-      // squishPillow() тикеров, которые одновременно вызывали drawPillow() с
-      // разными параметрами → подушка мигала и дёргалась.
-      let squishing = false
-      let flashing  = false
+      let squishing = false; let flashing = false
 
-      function flashPillow() {
-        if (flashing) return  // уже идёт — не запускаем второй
-        flashing = true
-        let t = 0
-        const tick = (ticker) => {
-          t += ticker.deltaTime * 0.07
-          drawPillow(t < 0.5 ? 1 - t * 0.25 : 1, 1, t < 0.5 ? 0xff7777 : null)
-          if (t >= 1) { app.ticker.remove(tick); drawPillow(); flashing = false }
+      function flashPillow(color=0xff7777) {
+        if (flashing) return; flashing=true; let t=0
+        const tick = tkr => {
+          t += tkr.deltaTime*0.07
+          drawPillow(t<0.5?1-t*0.25:1, 1, t<0.5?color:null)
+          if (t>=1) { app.ticker.remove(tick); drawPillow(); flashing=false }
         }
         app.ticker.add(tick)
       }
 
       function squishPillow() {
-        if (squishing) return  // уже идёт — не запускаем второй
-        squishing = true
-        let t = 0
-        const tick = (ticker) => {
-          t += ticker.deltaTime * 0.09
-          drawPillow(1 - Math.sin(t * Math.PI) * 0.38, 1 + Math.sin(t * Math.PI) * 0.08)
-          if (t >= 1) { app.ticker.remove(tick); drawPillow(); squishing = false }
+        if (squishing) return; squishing=true; let t=0
+        const tick = tkr => {
+          t += tkr.deltaTime*0.09
+          drawPillow(1-Math.sin(t*Math.PI)*0.38, 1+Math.sin(t*Math.PI)*0.08)
+          if (t>=1) { app.ticker.remove(tick); drawPillow(); squishing=false }
         }
         app.ticker.add(tick)
       }
 
-      // ── floating score text ──────────────────────────────────────────────
-      // ФИX #9: Убрали GlowFilter из floatText.
-      // Каждый вызов floatText создавал новый GlowFilter → новый WebGL шейдер.
-      // При быстром комбо (поймал 10 колец подряд) = 10 новых шейдеров за секунду.
-      // Текст и так читается — жирный, цветной. Шейдер был излишеством.
-      function floatText(text, x, y, color = GOLD_LIGHT) {
-        const t = makeText(text, { fontSize: 18, fill: color, fontWeight: 'bold' })
-        t.anchor.set(0.5)
-        t.x = x; t.y = y
-        app.stage.addChild(t)
-        let life = 1
-        const tick = (ticker) => {
-          life -= 0.025 * ticker.deltaTime
-          t.y  -= 1.2 * ticker.deltaTime
-          t.alpha = Math.max(0, life)
-          t.scale.set(1 + (1 - life) * 0.3)
-          if (life <= 0) { app.ticker.remove(tick); app.stage.removeChild(t); t.destroy() }
+      function floatText(text, x, y, color=GOLD_LIGHT) {
+        const t = makeText(text, { fontSize:18, fill:color, fontWeight:'bold' })
+        t.anchor.set(0.5); t.x=x; t.y=y; app.stage.addChild(t)
+        let life=1
+        const tick = tkr => {
+          life -= 0.025*tkr.deltaTime; t.y -= 1.2*tkr.deltaTime
+          t.alpha = Math.max(0,life); t.scale.set(1+(1-life)*0.3)
+          if (life<=0) { app.ticker.remove(tick); app.stage.removeChild(t); t.destroy() }
         }
         app.ticker.add(tick)
       }
 
-      // ── flower factory ───────────────────────────────────────────────────
+      // ── entity factories ──────────────────────────────────────────────────
+      // Each factory returns { type, subtype, gfx, wobble, wobbleAmp, spin }
+      // gfx.x / gfx.y are the authoritative position — do not duplicate.
+
+      function makeRing(subtype) {
+        const cfg=RING_TYPES[subtype]; const g=new Container(); const gfx=new Graphics()
+        const mid=(RING_OUTER+RING_INNER)/2; const bw=RING_OUTER-RING_INNER
+        gfx.arc(0,0,mid,Math.PI*0.2,Math.PI*0.85); gfx.stroke({ color:0x000000,width:bw,alpha:0.35,cap:'butt' })
+        gfx.arc(0,0,mid,0,Math.PI*2);              gfx.stroke({ color:cfg.color,width:bw-1,alpha:1,cap:'butt' })
+        gfx.arc(0,0,RING_INNER+1.5,0,Math.PI*2);  gfx.stroke({ color:cfg.shine,width:2,alpha:0.3,cap:'butt' })
+        gfx.arc(0,0,mid,-Math.PI*0.95,-Math.PI*0.25); gfx.stroke({ color:cfg.shine,width:bw*0.55,alpha:0.75,cap:'round' })
+        gfx.arc(0,0,mid,-Math.PI*0.75,-Math.PI*0.55); gfx.stroke({ color:WHITE,width:bw*0.3,alpha:0.55,cap:'round' })
+        gfx.arc(0,0,mid, Math.PI*0.6, Math.PI*0.82);  gfx.stroke({ color:cfg.shine,width:bw*0.25,alpha:0.3,cap:'round' })
+        g.addChild(gfx)
+        if (cfg.label) { const lbl=makeText(cfg.label,{fontSize:8,fill:cfg.shine}); lbl.anchor.set(0.5); g.addChild(lbl) }
+        g.filters=[new GlowFilter({ distance:14, outerStrength:subtype==='diamond'?2.5:1.5, color:cfg.glowColor })]
+        g.x=RING_OUTER+12+Math.random()*(W-(RING_OUTER+12)*2); g.y=-(RING_OUTER+10)
+        return { type:'ring', subtype, gfx:g, wobble:Math.random()*Math.PI*2, wobbleAmp:(Math.random()-0.5)*1.2, spin:0 }
+      }
+
       function makeFlower(xOverride) {
-        const g = new Container()
-        const gfx = new Graphics()
-        const r = FLOWER_R
-        for (let i = 0; i < 5; i++) {
-          const angle = (i / 5) * Math.PI * 2
-          const px = Math.cos(angle) * r * 0.65
-          const py = Math.sin(angle) * r * 0.65
-          gfx.ellipse(px, py, r * 0.45, r * 0.55)
-          gfx.fill({ color: FLOWER_PINK, alpha: 0.92 })
+        const g=new Container(); const gfx=new Graphics(); const r=FLOWER_R
+        for (let i=0;i<5;i++) {
+          const a=(i/5)*Math.PI*2
+          gfx.ellipse(Math.cos(a)*r*0.65,Math.sin(a)*r*0.65,r*0.45,r*0.55); gfx.fill({ color:FLOWER_PINK,alpha:0.92 })
         }
-        gfx.circle(0, 0, r * 0.35)
-        gfx.fill({ color: FLOWER_LIGHT })
-        gfx.circle(0, 0, r * 0.18)
-        gfx.fill({ color: GOLD_LIGHT })
+        gfx.circle(0,0,r*0.35); gfx.fill({ color:FLOWER_LIGHT })
+        gfx.circle(0,0,r*0.18); gfx.fill({ color:GOLD_LIGHT })
         g.addChild(gfx)
-        const lbl = makeText('✿', { fontSize: Math.round(r * 0.9), fill: WHITE })
-        lbl.anchor.set(0.5)
-        lbl.alpha = 0.85
-        g.addChild(lbl)
-        g.filters = [new GlowFilter({ distance: 18, outerStrength: 2.5, color: FLOWER_PINK })]
-        g.x = xOverride ?? (r + 12 + Math.random() * (W - (r + 12) * 2))
-        g.y = -(r + 10)
-        g._isFlower = true
-        g._wobble = Math.random() * Math.PI * 2
-        g._spin = (Math.random() - 0.5) * 0.04
-        return g
+        const lbl=makeText('✿',{fontSize:Math.round(r*0.9),fill:WHITE}); lbl.anchor.set(0.5); lbl.alpha=0.85; g.addChild(lbl)
+        g.filters=[new GlowFilter({ distance:18, outerStrength:2.5, color:FLOWER_PINK })]
+        g.x=xOverride??(r+12+Math.random()*(W-(r+12)*2)); g.y=-(r+10)
+        return { type:'flower', subtype:'flower', gfx:g, wobble:Math.random()*Math.PI*2, wobbleAmp:0, spin:(Math.random()-0.5)*0.04 }
       }
 
-      // ── ring factory ─────────────────────────────────────────────────────
-      function makeRing(typeName) {
-        const type = RING_TYPES[typeName]
-        const g = new Container()
-        const gfx = new Graphics()
-        const mid = (RING_OUTER + RING_INNER) / 2
-        const bw  = RING_OUTER - RING_INNER
-        gfx.arc(0, 0, mid, Math.PI * 0.2, Math.PI * 0.85)
-        gfx.stroke({ color: 0x000000, width: bw, alpha: 0.35, cap: 'butt' })
-        gfx.arc(0, 0, mid, 0, Math.PI * 2)
-        gfx.stroke({ color: type.color, width: bw - 1, alpha: 1, cap: 'butt' })
-        gfx.arc(0, 0, RING_INNER + 1.5, 0, Math.PI * 2)
-        gfx.stroke({ color: type.shine, width: 2, alpha: 0.3, cap: 'butt' })
-        gfx.arc(0, 0, mid, -Math.PI * 0.95, -Math.PI * 0.25)
-        gfx.stroke({ color: type.shine, width: bw * 0.55, alpha: 0.75, cap: 'round' })
-        gfx.arc(0, 0, mid, -Math.PI * 0.75, -Math.PI * 0.55)
-        gfx.stroke({ color: WHITE, width: bw * 0.3, alpha: 0.55, cap: 'round' })
-        gfx.arc(0, 0, mid, Math.PI * 0.6, Math.PI * 0.82)
-        gfx.stroke({ color: type.shine, width: bw * 0.25, alpha: 0.3, cap: 'round' })
+      function makePowerup(subtype) {
+        const cfg=POWERUP_TYPES[subtype]; const g=new Container(); const gfx=new Graphics(); const r=PU_R
+        // Diamond shape — distinct from rings (circles) and flowers (petals)
+        gfx.poly([0,-r, r*0.7,0, 0,r, -r*0.7,0]); gfx.fill({ color:cfg.color, alpha:0.2 })
+        gfx.poly([0,-r, r*0.7,0, 0,r, -r*0.7,0]); gfx.stroke({ color:cfg.color, width:2.5, alpha:0.88 })
+        gfx.poly([0,-r*0.6, r*0.4,0, 0,r*0.6, -r*0.4,0]); gfx.stroke({ color:WHITE, width:1, alpha:0.18 })
         g.addChild(gfx)
-        if (type.label) {
-          const lbl = makeText(type.label, { fontSize: 8, fill: type.shine })
-          lbl.anchor.set(0.5)
-          g.addChild(lbl)
+        const lbl=makeText(cfg.emoji,{fontSize:Math.round(r*0.9),fill:cfg.color}); lbl.anchor.set(0.5); g.addChild(lbl)
+        g.filters=[new GlowFilter({ distance:16, outerStrength:2.2, color:cfg.color })]
+        g.x=r+16+Math.random()*(W-(r+16)*2); g.y=-(r+10)
+        return { type:'powerup', subtype, gfx:g, wobble:Math.random()*Math.PI*2, wobbleAmp:(Math.random()-0.5)*0.7, spin:(Math.random()-0.5)*0.022 }
+      }
+
+      // ── active effects (performance.now timestamps — FPS-independent) ──────
+      // activateEffect always sets endsAt = now + duration — refresh, not stack.
+      // Double score can never stack infinitely: catching it again just resets timer.
+      const activeEffects = {
+        magnet: { active:false, endsAt:0, duration:POWERUP_TYPES.magnet.duration },
+        slow:   { active:false, endsAt:0, duration:POWERUP_TYPES.slow.duration   },
+        double: { active:false, endsAt:0, duration:POWERUP_TYPES.double.duration  },
+      }
+
+      function activateEffect(key) {
+        activeEffects[key].active = true
+        activeEffects[key].endsAt = performance.now() + activeEffects[key].duration
+      }
+
+      function applyPowerup(subtype) {
+        sfxPowerup()
+        const cfg = POWERUP_TYPES[subtype]
+        if (subtype === 'heart') {
+          if (lives < LIVES_MAX) {
+            lives++; updateHUD()
+            floatText('❤️ +1', pillowContainer.x, pillowContainer.y-50, cfg.color)
+          } else {
+            score += 500; updateHUD()   // max lives — bonus points instead
+            floatText('❤️ +500', pillowContainer.x, pillowContainer.y-50, cfg.color)
+          }
+        } else {
+          activateEffect(subtype)
+          floatText(cfg.emoji+' '+subtype.toUpperCase()+'!', W/2, H/2-65, cfg.color)
         }
-        g.filters = [new GlowFilter({ distance: 14, outerStrength: typeName === 'diamond' ? 2.5 : 1.5, color: type.glowColor })]
-        g.x = RING_OUTER + 12 + Math.random() * (W - (RING_OUTER + 12) * 2)
-        g.y = -(RING_OUTER + 10)
-        g._typeName = typeName
-        g._type = type
-        g._wobble = Math.random() * Math.PI * 2
-        g._wobbleAmp = (Math.random() - 0.5) * 1.2
-        return g
-      }
-
-      // ── touch controls ────────────────────────────────────────────────────
-      let lastTouchX = null
-      const onTouchStart = e => { lastTouchX = e.touches[0].clientX }
-      const onTouchMove  = e => {
-        if (lastTouchX === null) return
-        const dx = e.touches[0].clientX - lastTouchX
-        pillowContainer.x = Math.max(PILLOW_W / 2, Math.min(W - PILLOW_W / 2, pillowContainer.x + dx))
-        lastTouchX = e.touches[0].clientX
-      }
-      const onTouchEnd = () => { lastTouchX = null }
-      app.canvas.addEventListener('touchstart',  onTouchStart,  { passive: true })
-      app.canvas.addEventListener('touchmove',   onTouchMove,   { passive: true })
-      app.canvas.addEventListener('touchend',    onTouchEnd,    { passive: true })
-      app.canvas.addEventListener('touchcancel', onTouchEnd,    { passive: true })
-
-      function showGameOver(finalScore) {
-        onGameOverRef.current?.(finalScore)
+        flashPillow(cfg.color)
+        squishPillow()
       }
 
       // ── game state ────────────────────────────────────────────────────────
-      let score            = 0
-      let lives            = LIVES_MAX
-      let rings            = []
-      let spawnTimer       = 0
-      let spawnInterval    = SPAWN_START
-      let fallSpeed        = SPEED_START
-      let gameOver         = false
-      let combo            = 0
-      let comboFadeTimer   = 0
-      let lastFlowerBurstAt= 0
-      let ringPauseTimer   = 0
+      let score             = 0
+      let lives             = LIVES_MAX
+      let entities          = []           // unified: rings + flowers + powerups
+      let spawnTimer        = 0
+      let spawnInterval     = SPAWN_START
+      let fallSpeed         = SPEED_START
+      let gameOver          = false
+      let combo             = 0
+      let comboFadeTimer    = 0
+      let lastFlowerBurstAt = 0
+      let ringPauseTimer    = 0
+      let lastPowerupAt     = -POWERUP_COOLDOWN  // allow spawn at game start
 
       function updateHUD() {
-        scoreLbl.text = String(score)
-        drawHearts()
-        if (combo >= 2) {
-          comboLbl.text = `×${combo} combo`
-          comboLbl.alpha = 1
-          comboFadeTimer = 90
-        }
+        scoreLbl.text = String(score); drawHearts()
+        if (combo >= 2) { comboLbl.text=`×${combo} combo`; comboLbl.alpha=1; comboFadeTimer=90 }
       }
       updateHUD()
 
       // ── flower burst ──────────────────────────────────────────────────────
       function spawnFlowerBurst(count) {
-        // ФИX #10: Защита от деления на ноль.
-        // (i / (count - 1)) при count=1 → NaN → цветок улетал за экран.
         if (count < 2) return
-        rings = rings.filter(obj => {
-          if (!obj._isFlower) { app.stage.removeChild(obj); obj.destroy(); return false }
+        entities = entities.filter(e => {
+          if (e.type==='ring') { app.stage.removeChild(e.gfx); e.gfx.destroy(); return false }
           return true
         })
         ringPauseTimer = 4000
-        for (let i = 0; i < count; i++) {
-          const x = (FLOWER_R + 12) + (i / (count - 1)) * (W - (FLOWER_R + 12) * 2)
-          const flower = makeFlower(x)
-          flower.y = -(FLOWER_R + 10 + i * 18)
-          app.stage.addChildAt(flower, 3)
-          rings.push(flower)
+        for (let i=0;i<count;i++) {
+          const x=(FLOWER_R+12)+(i/(count-1))*(W-(FLOWER_R+12)*2)
+          const e=makeFlower(x); e.gfx.y=-(FLOWER_R+10+i*18)
+          app.stage.addChildAt(e.gfx,3); entities.push(e)
         }
       }
 
       // ── main loop ─────────────────────────────────────────────────────────
       app.ticker.add(ticker => {
-        const dt = ticker.deltaTime
+        const dt  = ticker.deltaTime
+        const now = performance.now()
 
-        // ФИX #4 (продолжение): Единый тикер обновляет ВСЕ частицы.
-        // Итерируем с конца чтобы безопасно удалять элементы через splice().
-        for (let i = particles.length - 1; i >= 0; i--) {
-          const p = particles[i]
-          if (p.type === 'sparkle') {
-            p.gfx.x  += p.vx * dt * 0.8
-            p.gfx.y  += (p.vy + (1 - p.life) * 5) * dt * 0.8
-            p.life   -= 0.035 * dt
-            p.gfx.rotation += 0.1 * dt
+        // 1. Particles — single loop replaces hundreds of individual tickers
+        for (let i=particles.length-1;i>=0;i--) {
+          const p=particles[i]
+          if (p.type==='sparkle') {
+            p.gfx.x += p.vx*dt*0.8; p.gfx.y += (p.vy+(1-p.life)*5)*dt*0.8
+            p.life  -= 0.035*dt; p.gfx.rotation += 0.1*dt
           } else {
-            // trail
-            p.gfx.y  += p.vy * dt
-            p.life   -= 0.055 * dt
+            p.gfx.y += p.vy*dt; p.life -= 0.055*dt
           }
-          p.gfx.alpha = Math.max(0, p.life)
-          if (p.life <= 0) {
-            app.stage.removeChild(p.gfx)
-            p.gfx.destroy()
-            particles.splice(i, 1)
+          p.gfx.alpha = Math.max(0,p.life)
+          if (p.life<=0) { app.stage.removeChild(p.gfx); p.gfx.destroy(); particles.splice(i,1) }
+        }
+
+        // 2. Twinkle stars
+        for (const s of twinkleStars) { s._phase+=s._speed*dt; s.alpha=0.2+Math.abs(Math.sin(s._phase))*0.6 }
+
+        // 3. Expire effects + update HUD bars (scale.x only — no redraw)
+        for (const key of HUD_KEYS) {
+          const eff=activeEffects[key]
+          if (eff.active && now>eff.endsAt) eff.active=false
+          const hud=effectHUD[key]
+          if (eff.active) {
+            hud.cont.alpha = 1
+            hud.fill.scale.x = Math.max(0,(eff.endsAt-now)/eff.duration)
+          } else {
+            hud.cont.alpha = 0
           }
         }
 
-        for (const s of twinkleStars) {
-          s._phase += s._speed * dt
-          s.alpha = 0.2 + Math.abs(Math.sin(s._phase)) * 0.6
-        }
-
-        if (comboFadeTimer > 0) {
-          comboFadeTimer -= dt
-          if (comboFadeTimer <= 0) comboLbl.alpha = 0
-        }
+        // 4. Combo fade
+        if (comboFadeTimer>0) { comboFadeTimer-=dt; if (comboFadeTimer<=0) comboLbl.alpha=0 }
 
         if (gameOver) return
 
-        // pillow movement
-        if (keys['ArrowLeft']  || keys['a']) pillowContainer.x = Math.max(PILLOW_W / 2, pillowContainer.x - PILLOW_SPEED * dt)
-        if (keys['ArrowRight'] || keys['d']) pillowContainer.x = Math.min(W - PILLOW_W / 2, pillowContainer.x + PILLOW_SPEED * dt)
+        // 5. Keyboard pillow
+        if (keys['ArrowLeft']||keys['a'])  pillowContainer.x=Math.max(PILLOW_W/2,pillowContainer.x-PILLOW_SPEED*dt)
+        if (keys['ArrowRight']||keys['d']) pillowContainer.x=Math.min(W-PILLOW_W/2,pillowContainer.x+PILLOW_SPEED*dt)
 
-        // spawn (paused during flower burst)
-        if (ringPauseTimer > 0) {
+        // 6. Spawn — power-up cooldown prevents spam
+        if (ringPauseTimer>0) {
           ringPauseTimer -= ticker.deltaMS
         } else {
           spawnTimer += ticker.deltaMS
-          if (spawnTimer >= spawnInterval) {
-            spawnTimer = 0
-            const typeName = pickRingType()
-            const obj = typeName === 'flower' ? makeFlower() : makeRing(typeName)
-            app.stage.addChildAt(obj, 3)
-            rings.push(obj)
-            if (spawnInterval > SPAWN_MIN) spawnInterval = Math.max(SPAWN_MIN, spawnInterval - 10)
-            fallSpeed = Math.min(SPEED_MAX, fallSpeed + 0.04)
+          if (spawnTimer>=spawnInterval) {
+            spawnTimer=0
+            const canPU  = (now-lastPowerupAt)>POWERUP_COOLDOWN
+            const pick   = pickEntityType(canPU)
+            let entity
+            if      (pick.type==='ring')   entity=makeRing(pick.subtype)
+            else if (pick.type==='flower') entity=makeFlower()
+            else { entity=makePowerup(pick.subtype); lastPowerupAt=now }
+            app.stage.addChildAt(entity.gfx,3); entities.push(entity)
+            if (spawnInterval>SPAWN_MIN) spawnInterval=Math.max(SPAWN_MIN,spawnInterval-10)
+            fallSpeed=Math.min(SPEED_MAX,fallSpeed+0.04)
           }
         }
 
-        // flower burst every ×50 milestone
-        const milestone = Math.floor(combo / COMBO_FLOWER_BURST) * COMBO_FLOWER_BURST
-        if (combo >= COMBO_FLOWER_BURST && milestone > lastFlowerBurstAt) {
-          lastFlowerBurstAt = milestone
-          spawnFlowerBurst(FLOWER_BURST_COUNT)
-          floatText(`🌸 ×${milestone} COMBO! 🌸`, W / 2, H / 2 - 40, FLOWER_PINK)
+        // 7. Flower burst milestones
+        const milestone=Math.floor(combo/COMBO_FLOWER_BURST)*COMBO_FLOWER_BURST
+        if (combo>=COMBO_FLOWER_BURST && milestone>lastFlowerBurstAt) {
+          lastFlowerBurstAt=milestone; spawnFlowerBurst(FLOWER_BURST_COUNT)
+          floatText(`🌸 ×${milestone} COMBO! 🌸`, W/2, H/2-40, FLOWER_PINK)
         }
-        if (combo === 0) lastFlowerBurstAt = 0
+        if (combo===0) lastFlowerBurstAt=0
 
-        // update rings & flowers
-        rings = rings.filter(obj => {
-          if (obj._isFlower) {
-            obj.y += fallSpeed * 0.7 * dt
-            obj._wobble += 0.02 * dt
-            obj.rotation += obj._spin * dt
-            obj.x += Math.sin(obj._wobble * 1.5) * 0.8 * dt
-            // ФИX #5 (продолжение): вероятность трейла снижена + проверка лимита
-            if (Math.random() < 0.25 && particles.length < MAX_PARTICLES) {
-              spawnTrail(obj.x, obj.y, FLOWER_PINK)
-            }
-            const glow = obj.filters?.[0]
-            if (glow?.outerStrength !== undefined) glow.outerStrength = 2 + Math.sin(obj._wobble * 4) * 0.8
+        // 8. Effective fall speed — slow time affects fall only, NOT spawn rate
+        const effSpeed = activeEffects.slow.active ? fallSpeed*0.38 : fallSpeed
 
-            const inX = Math.abs(obj.x - pillowContainer.x) < PILLOW_W / 2 + FLOWER_R * 0.7
-            const inY = obj.y >= pillowContainer.y - PILLOW_H / 2 - FLOWER_R * 0.7 &&
-                        obj.y <= pillowContainer.y + PILLOW_H / 2
+        // 9. Update all entities
+        entities = entities.filter(entity => {
+          const { type, subtype, gfx } = entity
 
-            if (inX && inY) {
-              score += FLOWER_POINTS
-              updateHUD()
-              sfxFlower()
-              spawnSparkles(obj.x, pillowContainer.y, FLOWER_PINK)
-              floatText(`+${FLOWER_POINTS} 🌸`, obj.x, pillowContainer.y - 40, FLOWER_PINK)
-              squishPillow()
-              app.stage.removeChild(obj); obj.destroy()
-              return false
+          // ── FLOWER ──────────────────────────────────────────────────────
+          if (type==='flower') {
+            gfx.y       += effSpeed*0.7*dt; entity.wobble+=0.02*dt
+            gfx.rotation += entity.spin*dt; gfx.x+=Math.sin(entity.wobble*1.5)*0.8*dt
+            if (Math.random()<0.25 && particles.length<MAX_PARTICLES) spawnTrail(gfx.x,gfx.y,FLOWER_PINK)
+            const glow=gfx.filters?.[0]; if (glow?.outerStrength!=null) glow.outerStrength=2+Math.sin(entity.wobble*4)*0.8
+            const inX=Math.abs(gfx.x-pillowContainer.x)<PILLOW_W/2+FLOWER_R*0.7
+            const inY=gfx.y>=pillowContainer.y-PILLOW_H/2-FLOWER_R*0.7 && gfx.y<=pillowContainer.y+PILLOW_H/2
+            if (inX&&inY) {
+              score+=FLOWER_POINTS; updateHUD(); sfxFlower()
+              spawnSparkles(gfx.x,pillowContainer.y,FLOWER_PINK)
+              floatText(`+${FLOWER_POINTS} 🌸`,gfx.x,pillowContainer.y-40,FLOWER_PINK)
+              squishPillow(); app.stage.removeChild(gfx); gfx.destroy(); return false
             }
-            if (obj.y > H + FLOWER_R + 10) {
-              app.stage.removeChild(obj); obj.destroy()
-              return false
-            }
+            if (gfx.y>H+FLOWER_R+10) { app.stage.removeChild(gfx); gfx.destroy(); return false }
             return true
           }
 
-          // ring
-          const speed = obj._typeName === 'diamond' ? fallSpeed * 0.8 : fallSpeed
-          obj.y += speed * dt
-          obj._wobble += 0.025 * dt
-          obj.x += Math.sin(obj._wobble) * obj._wobbleAmp * dt
-
-          // ФИX #5 (продолжение): трейл только если не переполнен пул частиц
-          if (Math.random() < 0.25 && particles.length < MAX_PARTICLES) {
-            spawnTrail(obj.x, obj.y, obj._type.glowColor)
+          // ── POWER-UP ────────────────────────────────────────────────────
+          if (type==='powerup') {
+            const cfg=POWERUP_TYPES[subtype]
+            gfx.y       += effSpeed*0.55*dt   // falls slower — easier to spot
+            entity.wobble += 0.018*dt; gfx.rotation+=entity.spin*dt
+            gfx.x       += Math.sin(entity.wobble)*entity.wobbleAmp*dt
+            const glow=gfx.filters?.[0]; if (glow?.outerStrength!=null) glow.outerStrength=2+Math.sin(entity.wobble*3)*0.6
+            const inX=Math.abs(gfx.x-pillowContainer.x)<PILLOW_W/2+PU_R*0.85
+            const inY=gfx.y>=pillowContainer.y-PILLOW_H/2-PU_R*0.85 && gfx.y<=pillowContainer.y+PILLOW_H/2
+            if (inX&&inY) {
+              spawnSparkles(gfx.x,pillowContainer.y,cfg.color)
+              applyPowerup(subtype); app.stage.removeChild(gfx); gfx.destroy(); return false
+            }
+            // Missed power-up — no life loss
+            if (gfx.y>H+PU_R+10) { app.stage.removeChild(gfx); gfx.destroy(); return false }
+            return true
           }
 
-          const glow = obj.filters?.[0]
-          if (glow?.outerStrength !== undefined) glow.outerStrength = 1.2 + Math.sin(obj._wobble * 3) * 0.6
+          // ── RING ────────────────────────────────────────────────────────
+          const ringCfg=RING_TYPES[subtype]
+          const spd=subtype==='diamond' ? effSpeed*0.8 : effSpeed
+          gfx.y       += spd*dt; entity.wobble+=0.025*dt
+          gfx.x       += Math.sin(entity.wobble)*entity.wobbleAmp*dt
 
-          const inX = Math.abs(obj.x - pillowContainer.x) < PILLOW_W / 2 + RING_OUTER * 0.55
-          const inY = obj.y >= pillowContainer.y - PILLOW_H / 2 - RING_OUTER * 0.55 &&
-                      obj.y <= pillowContainer.y + PILLOW_H / 2
+          // Magnet: quadratic falloff — gentle at edge, strong near pillow, no jitter
+          if (activeEffects.magnet.active) {
+            const dx=pillowContainer.x-gfx.x; const dy=pillowContainer.y-gfx.y
+            const dist=Math.sqrt(dx*dx+dy*dy)
+            if (dist<MAGNET_RADIUS && dist>1) {
+              const t=1-dist/MAGNET_RADIUS        // 0 at edge, 1 at center
+              const f=MAGNET_FORCE*t*t            // quadratic: smooth, no teleport
+              gfx.x+=(dx/dist)*f*dt; gfx.y+=(dy/dist)*f*dt
+            }
+          }
 
-          if (inX && inY) {
+          if (Math.random()<0.25 && particles.length<MAX_PARTICLES) spawnTrail(gfx.x,gfx.y,ringCfg.glowColor)
+          const glow=gfx.filters?.[0]; if (glow?.outerStrength!=null) glow.outerStrength=1.2+Math.sin(entity.wobble*3)*0.6
+
+          const inX=Math.abs(gfx.x-pillowContainer.x)<PILLOW_W/2+RING_OUTER*0.55
+          const inY=gfx.y>=pillowContainer.y-PILLOW_H/2-RING_OUTER*0.55 && gfx.y<=pillowContainer.y+PILLOW_H/2
+
+          if (inX&&inY) {
             combo++
-            const pts = obj._type.points * combo
-            score += pts
-            updateHUD()
-            sfxCatch()
-            spawnSparkles(obj.x, pillowContainer.y, obj._type.glowColor)
-            floatText(combo > 1 ? `+${pts} ×${combo}` : `+${pts}`, obj.x, pillowContainer.y - 30, obj._type.glowColor)
-            squishPillow()
-            app.stage.removeChild(obj); obj.destroy()
-            return false
+            // double score: 2× multiplier, no stacking (activateEffect resets timer each catch)
+            const pts=ringCfg.points*combo*(activeEffects.double.active?2:1)
+            score+=pts; updateHUD(); sfxCatch()
+            spawnSparkles(gfx.x,pillowContainer.y,ringCfg.glowColor)
+            const tag=(activeEffects.double.active?'×2 ':'')+(combo>1?`×${combo}`:'')
+            floatText(`+${pts}${tag?' '+tag:''}`, gfx.x, pillowContainer.y-30, ringCfg.glowColor)
+            squishPillow(); app.stage.removeChild(gfx); gfx.destroy(); return false
           }
 
-          if (obj.y > H + RING_OUTER + 10) {
-            combo = 0
-            lives--
-            updateHUD()
-            sfxMiss()
-            flashPillow()
-            app.stage.removeChild(obj); obj.destroy()
-            if (lives <= 0) { gameOver = true; showGameOver(score) }
+          if (gfx.y>H+RING_OUTER+10) {
+            combo=0; lives--; updateHUD(); sfxMiss(); flashPillow()
+            app.stage.removeChild(gfx); gfx.destroy()
+            if (lives<=0) { gameOver=true; onGameOverRef.current?.(score) }
             return false
           }
           return true
         })
       })
 
+      // ── touch controls ────────────────────────────────────────────────────
+      let lastTouchX=null
+      const onTouchStart=e=>{ lastTouchX=e.touches[0].clientX }
+      const onTouchMove=e=>{
+        if (lastTouchX===null) return
+        const dx=e.touches[0].clientX-lastTouchX
+        pillowContainer.x=Math.max(PILLOW_W/2,Math.min(W-PILLOW_W/2,pillowContainer.x+dx))
+        lastTouchX=e.touches[0].clientX
+      }
+      const onTouchEnd=()=>{ lastTouchX=null }
+      app.canvas.addEventListener('touchstart', onTouchStart, { passive:true })
+      app.canvas.addEventListener('touchmove',  onTouchMove,  { passive:true })
+      app.canvas.addEventListener('touchend',   onTouchEnd,   { passive:true })
+      app.canvas.addEventListener('touchcancel',onTouchEnd,   { passive:true })
+
       app._cleanupExtras = () => {
         window.removeEventListener('resize', onResize)
         container.removeEventListener('touchstart', unlockAudio)
-        app.canvas.removeEventListener('touchstart',  onTouchStart)
-        app.canvas.removeEventListener('touchmove',   onTouchMove)
-        app.canvas.removeEventListener('touchend',    onTouchEnd)
-        app.canvas.removeEventListener('touchcancel', onTouchEnd)
-        // Очищаем все оставшиеся частицы
+        app.canvas.removeEventListener('touchstart', onTouchStart)
+        app.canvas.removeEventListener('touchmove',  onTouchMove)
+        app.canvas.removeEventListener('touchend',   onTouchEnd)
+        app.canvas.removeEventListener('touchcancel',onTouchEnd)
         for (const p of particles) { p.gfx.destroy() }
         particles.length = 0
       }
@@ -709,17 +613,9 @@ const sfxFlower = () => {
       destroyed = true
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup',   onKeyUp)
-      // ФИX #11: Правильный вызов destroy для PixiJS v8.
-      // Второй аргумент { children: true } в v8 передаётся как options объект.
       if (app) { app._cleanupExtras?.(); app.destroy(true, { children: true }) }
     }
   }, [])
 
-  return (
-    <div
-      ref={containerRef}
-      className="w-full h-full"
-      style={{ touchAction: 'none' }}
-    />
-  )
+  return <div ref={containerRef} className="w-full h-full" style={{ touchAction: 'none' }} />
 }

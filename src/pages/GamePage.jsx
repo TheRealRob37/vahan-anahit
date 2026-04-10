@@ -93,8 +93,7 @@ export default function GamePage() {
   }
 
   function handlePlayAgain() {
-    setPhase('name')
-    setInputValue('')
+    setPhase('playing')
     setLeaderboard([])
     setMyRank(null)
     setIsRecord(false)
@@ -185,9 +184,6 @@ export default function GamePage() {
 
                 <form onSubmit={handleStart} className="flex flex-col gap-3">
                   <div className="text-left">
-                    <label className="font-armenian-sans text-xs block mb-1.5" style={{ color: 'rgba(253,230,138,0.45)', letterSpacing: '0.06em' }}>
-                      Ձեր անունը
-                    </label>
                     <input
                       ref={inputRef}
                       type="text"
