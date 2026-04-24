@@ -93,7 +93,7 @@ export const seatingData: Record<SeatingSide, Table[]> = {
         'Աստղ',
         'Աննա',
         'Արեգ',
-        'Դիաննա',
+        'Դիանա',
       ],
     },
     {
