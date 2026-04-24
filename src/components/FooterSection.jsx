@@ -3,9 +3,24 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { COUPLE, WEDDING_DATE_DISPLAY } from '../config/wedding'
 
-const FooterSection = memo(function FooterSection() {
+const FooterSection = memo(function FooterSection({ minimal = false }) {
   const navigate = useNavigate()
   const [clicked, setClicked] = useState(false)
+
+  if (minimal) {
+    return (
+      <footer className="px-6 py-10" style={{ backgroundColor: '#2c2118' }}>
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: true }}
+          className="mx-auto h-px w-24 bg-amber-200/15"
+        />
+      </footer>
+    )
+  }
+
   return (
     <footer className="text-center py-14 px-6" style={{ backgroundColor: '#2c2118' }}>
       <motion.div

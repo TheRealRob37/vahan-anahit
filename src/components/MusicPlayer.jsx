@@ -7,8 +7,12 @@ const SRC = `${import.meta.env.BASE_URL}where-is-my-husband.mp3`
 export const audio = new Audio(SRC)
 audio.preload = 'auto'
 
-// Autoplay only on the invitation page (not admin, not game)
-if (!window.location.pathname.includes('/admin') && !window.location.pathname.includes('/game')) {
+// Autoplay only on the invitation page
+if (
+  !window.location.pathname.includes('/admin') &&
+  !window.location.pathname.includes('/game') &&
+  !window.location.pathname.includes('/seating')
+) {
   audio.play().catch(() => {
     const resume = () => {
       audio.play().catch(() => {})
